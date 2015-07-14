@@ -2,6 +2,15 @@
 
 Neptune is a Kafka client. It's a fork of the [Poseidon](http://github.com/bpot/poseidon) client.
 
+The only features that are currently implemented include:
+* Produce (single message)
+
+To be implemented:
+* Compression
+* Produce (multiple messages)
+* Fetch
+* Offset management
+
 ## Usage
 
 ```ruby
