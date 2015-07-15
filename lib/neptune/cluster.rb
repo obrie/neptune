@@ -116,6 +116,7 @@ module Neptune
       attempt(config[:retry_produce_count]) do
         topic = self.topic(topic_name)
         partition = topic.partition_for(key)
+        # TODO: Handle unavailable partition
 
         topic_messages = [TopicMessage.new(
           :topic_name => topic_name,

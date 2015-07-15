@@ -5,6 +5,7 @@ require 'neptune/topic'
 
 module Neptune
   class MetadataRequest < Request
+    # List of topics to fetch metadata for
     # @return [Array<String>]
     attribute :topic_names, ArrayOf[String]
 
@@ -15,9 +16,11 @@ module Neptune
   end
 
   class MetadataResponse < Response
+    # Brokers used for the requested topics
     # @return [Array<Neptune::Broker]
     attribute :brokers, ArrayOf[Broker]
 
+    # Topics found in the cluster
     # @return [Array<Neptune::Topic]
     attribute :topics, ArrayOf[Topic]
   end

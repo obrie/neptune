@@ -27,10 +27,16 @@ module Neptune
       @partition_counter = 0
     end
 
+    # The name of the error associated with the current error code
+    # @return [Symbol]
+    def error_name
+      ERROR_CODES[error_code]
+    end
+
     # Whether this topic exists in the cluster
     # @return [Boolean]
     def exists?
-      error_code == 0
+      error_name == :no_error
     end
 
     # Whether a leader is available for this topic

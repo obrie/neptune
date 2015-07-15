@@ -58,6 +58,7 @@ module Neptune
       end
 
       # Converts the given value to its Kafka format
+      # @return [String]
       def to_kafka(resource)
         buffer = Buffer.new
 
@@ -78,6 +79,7 @@ module Neptune
       end
 
       # Converts from the Kafka data in the current buffer's position
+      # @return [Object]
       def from_kafka(buffer)
         catch(:halt) do
           resource = new
@@ -131,12 +133,6 @@ module Neptune
           __send__("#{attribute}=", value) if respond_to?("#{attribute}=", true)
         end
       end
-    end
-
-    # The name of the error associated with the current error code
-    # @return [Symbol]
-    def error_name
-      ERROR_CODES[error_code]
     end
 
     # Converts this class to its Kafka data representation

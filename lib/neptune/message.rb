@@ -37,12 +37,5 @@ module Neptune
       @offset ||= 0
       @metadata ||= 0
     end
-
-    # Whether the checksum failed on this message
-    # @return [Boolean]
-    attr_accessor :checksum_failed
-    def checksum_failed?
-      @checksum_failed
-    end
   end
 end

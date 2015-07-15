@@ -1,4 +1,5 @@
 module Neptune
+  # Mapping of Kafka error codes to human-readable names
   ERROR_CODES = {
     -1 => :unknown_error,
     0 => :no_error,
@@ -22,7 +23,7 @@ module Neptune
   class Error < StandardError
     attr_reader :exception
 
-    def initialize(message = nil, exception = nil)
+    def initialize(message = nil, exception = nil) #:nodoc:
       super(message)
       @exception = exception
     end

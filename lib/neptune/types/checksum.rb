@@ -1,4 +1,5 @@
 require 'zlib'
+require 'neptune/errors'
 require 'neptune/types/int32'
 require 'neptune/types/size'
 
@@ -7,6 +8,7 @@ module Neptune
     # Provides typecasting for Checksum data
     class Checksum
       # Converts the given value to its Kafka format
+      # @return [String]
       def self.to_kafka(value, buffer)
         result = Int32.to_kafka(Zlib.crc32(buffer.peek(buffer.size)))
         result.prepend(Int32.to_kafka(buffer.size + result.size))
@@ -14,6 +16,7 @@ module Neptune
       end
 
       # Converts from the Kafka data in the current buffer's position
+      # @return [Fixnum]
       def self.from_kafka(buffer)
         # Validate enough bytes to read size / checksum
         throw :halt if buffer.bytes_remaining < 8

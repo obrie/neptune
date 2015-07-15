@@ -1,4 +1,5 @@
 require 'neptune/resource'
+require 'neptune/errors'
 
 module Neptune
   # An ordered, immutable sequence of messages within a topic
@@ -26,6 +27,12 @@ module Neptune
     # The topic this partition belongs to
     # @return [Neptune::Cluster]
     attr_accessor :topic
+
+    # The name of the error associated with the current error code
+    # @return [Symbol]
+    def error_name
+      ERROR_CODES[error_code]
+    end
 
     # The broker currently acting as leader
     # @return [Neptune::Broker]

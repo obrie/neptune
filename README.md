@@ -3,6 +3,7 @@
 Neptune is a Kafka client. It's a fork of the [Poseidon](http://github.com/bpot/poseidon) client.
 
 The only features that are currently implemented include:
+* Metadata
 * Produce (single message)
 
 To be implemented:
@@ -17,7 +18,9 @@ To be implemented:
 require 'neptune'
 
 cluster = Neptune::Cluster.new(['localhost:9092'], client_id: 'my_test_producer')
+cluster.topic('topic1', 'value1')
 cluster.produce('topic1', 'value1')
+cluster.produce('topic1', 'value1', 'key1')
 ```
 
 ## Requirements

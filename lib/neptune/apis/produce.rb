@@ -30,6 +30,12 @@ module Neptune
     # @return [Fixnum]
     attribute :offset, Int64
 
+    # The name of the error associated with the current error code
+    # @return [Symbol]
+    def error_name
+      ERROR_CODES[error_code]
+    end
+
     # Whether the produce was successful in this partition
     # @return [Boolean]
     def success?

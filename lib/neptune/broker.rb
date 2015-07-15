@@ -28,11 +28,14 @@ module Neptune
       @correlation_id = 0
     end
 
+    # The connection to use for this broker
+    # @return [Neptune::Connection]
     def connection
       @connection ||= cluster.connections[uri]
     end
 
     # The URI for this broker
+    # @return [String]
     def uri
       "#{host}:#{port}"
     end
@@ -75,8 +78,10 @@ module Neptune
     end
 
     # Close any open connections to the broker
+    # @return [Boolean] true, always
     def close
       connection.close
+      true
     end
 
     private
