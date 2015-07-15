@@ -139,7 +139,7 @@ module Neptune
               case type
               when Array
                 type = type.first
-                if !type.respond_to?(:attributes) || !type.attributes.key?(:size)
+                if type.respond_to?(:attributes) && type.attributes.key?(:size)
                   if resource.size
                     array_buffer = Buffer.new(buffer.read(resource.size))
                   else
@@ -152,7 +152,7 @@ module Neptune
                   end
                   array
                 else
-                  Int32.from_kafka(buffer).times.map { type.from_kafka(buffer) }
+                  Types::Int32.from_kafka(buffer).times.map { type.from_kafka(buffer) }
                 end
               else
                 type.from_kafka(buffer)
@@ -164,6 +164,8 @@ module Neptune
             raise DecodingError.new("[Neptune] #{ex.class}: #{ex.message}", ex)
           end
         end
+
+        resource
       end
 
       # The number of bytes expected to be in the header
