@@ -1,10 +1,13 @@
 require 'neptune/broker'
 require 'neptune/config'
+require 'neptune/loggable'
 require 'neptune/topic'
 
 module Neptune
   # A group of brokers
   class Cluster
+    include Loggable
+
     # List of brokers known to the cluster
     # @return [Hash<String, Neptune::Broker>]
     attr_reader :brokers
@@ -100,7 +103,7 @@ module Neptune
         true
       rescue ConnectionError => ex
         logger.warn "[Neptune] Failed to retrieve metadata: #{ex.message}"
-        if index == brokers.count
+        if index == brokers.count - 1
           # No more brokers left to try on: raise
           raise if options[:raise_on_error]
         else
@@ -168,12 +171,14 @@ module Neptune
     # the problem.
     def retriable(attempts, exceptions = [ConnectionError])
       error = nil
+      exception = nil
 
       halt_error = catch(:halt) do
         attempts.times do |attempt|
           begin
             break unless error = yield
           rescue *exceptions => ex
+            exception = ex
             logger.warn "[Neptune] Failed to call Kafka API on attempt ##{attempt}: #{ex.message}"
           end
 
@@ -186,7 +191,11 @@ module Neptune
       end
       error ||= halt_error
 
-      raise Error.new("Failed API call: #{error}") if error
+      if exception
+        raise Error.new("Failed API call (#{exception.class}: #{exception.message})", exception)
+      elsif error
+        raise Error.new("Failed API call (#{error})")
+      end
     end
   end
 end

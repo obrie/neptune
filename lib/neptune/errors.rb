@@ -21,11 +21,11 @@ module Neptune
   }
 
   class Error < StandardError
-    attr_reader :exception
+    attr_reader :inner_exception
 
-    def initialize(message = nil, exception = nil) #:nodoc:
+    def initialize(message = nil, inner_exception = nil) #:nodoc:
       super(message)
-      @exception = exception
+      @inner_exception = inner_exception
     end
   end
 
