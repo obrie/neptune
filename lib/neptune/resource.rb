@@ -17,7 +17,7 @@ module Neptune
 
       # Whether the resource can be truncated
       # @return [Boolean]
-      def truncatable
+      def truncatable?
         if @truncatable.nil?
           @truncatable = false
         end
@@ -28,7 +28,7 @@ module Neptune
       # The attributes defined for the resource
       # @return [Hash]
       def attributes
-        @attributes ||= {}
+        @attributes ||= superclass.respond_to?(:attributes) ? superclass.attributes.dup : {}
       end
 
       # Defines a new Kafka attribute on this class.
@@ -87,7 +87,6 @@ module Neptune
               if type.is_a?(Array)
                 type = type.first
                 value.reverse.each {|v| buffer.prepend(type.to_kafka(v))}
-                # FIXME
                 buffer.prepend(Types::Int32.to_kafka(value.size)) if !type.respond_to?(:attributes) || !type.attributes.key?(:size)
               else
                 buffer.prepend(type.to_kafka(value))
@@ -134,9 +133,9 @@ module Neptune
           end
         end
 
-        attributes.except(:size, :checksum).each do |attr, type|
+        attributes.reject {|attr| [:size, :checksum].include?(attr)}.each do |attr, type|
           begin
-            self[attr] =
+            resource[attr] =
               case type
               when Array
                 type = type.first
