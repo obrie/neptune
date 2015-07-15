@@ -24,7 +24,7 @@ module Neptune
 
     def initialize(*) #:nodoc:
       super
-      @next_partition_counter = 0
+      @partition_counter = 0
     end
 
     # Whether this topic exists in the cluster
