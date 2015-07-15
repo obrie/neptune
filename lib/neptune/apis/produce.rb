@@ -2,17 +2,19 @@ require 'neptune/topic_message'
 
 module Neptune
   class ProduceRequest < Request
+    # How many acknowledgements the servers should receive before responding to
+    # the request
     # @return [Fixnum]
     attribute :required_acks, Int16
 
+    # Maximum time, in milliseconds, the server can await the receipt of the
+    # number of required acknowledgements
     # @return [Fixnum]
     attribute :ack_timeout, Int32
 
+    # The messages to send
     # @return [Array<Neptune::TopicMessage>]
     attribute :topic_messages, ArrayOf[TopicMessage]
-
-    # @return [Array<Neptune::ProduceResponse>]
-    attr_accessor :response
 
     def initialize(*) #:nodoc:
       super
@@ -21,12 +23,16 @@ module Neptune
   end
 
   class ProducePartitionResponse < Resource
+    # The partition this response corresponds to
     # @return [Fixnum]
     attribute :partition_id, Int32
 
+    # The error from this partition
     # @return [Fixnum]
     attribute :error_code, Int16
 
+    # The offset assigned to the first message in the message set appended to
+    # this partition
     # @return [Fixnum]
     attribute :offset, Int64
 
@@ -44,15 +50,17 @@ module Neptune
 
     # Whether the error, if any, is retrable in this partition
     # @return [Boolean]
-    def retryable?
+    def retriable?
       [:leader_not_available, :not_leader_for_partition].include?(error_name)
     end
   end
 
   class ProduceTopicResponse < Resource
+    # The topic messages are being published to
     # @return [String]
     attribute :topic_name, String
 
+    # Responses for each partition within the topic
     # @return [Array<ProducePartitionResponse>]
     attribute :partition_responses, ArrayOf[ProducePartitionResponse]
 
@@ -64,8 +72,8 @@ module Neptune
 
     # Look up the response for the given partition message
     # @return [Neptune::PartitionResponse]
-    def response_for(message)
-      partition_responses.detect {|response| response.partition_id == message.partition_id}
+    def response_for(partition_message)
+      partition_responses.detect {|response| response.partition_id == partition_message.partition_id}
     end
 
     # Identify messages which have failed
@@ -76,12 +84,13 @@ module Neptune
 
     # Identify messages which can be retried
     # @return [Array<Neptune::PartitionMessage>]
-    def retryable_messages(partition_messages)
-      partition_messages.select {|message| response_for(message).retryable?}
+    def retriable_messages(partition_messages)
+      partition_messages.select {|message| response_for(message).retriable?}
     end
   end
 
   class ProduceResponse < Resource
+    # Responses for each topic within the cluster
     # @return [Array<ProduceTopicResponse>]
     attribute :topic_responses, ArrayOf[ProduceTopicResponse]
 
@@ -96,26 +105,26 @@ module Neptune
       topic_responses.all? {|response| response.success?}
     end
 
-    # The first available error code in the response
+    # The first available error in the response
     # @return [Fixnum]
-    def error_code
-      failed_response = topic_responses.map(&:partition_responses).reject(&:success?).first
+    def error_name
+      failed_response = topic_responses.map(&:partition_responses).flatten.reject(&:success?).first
       if failed_response
-        failed_response.error_code
+        failed_response.error_name
       end
     end
 
     # Look up the response for the given topic message
     # @return [Neptune::TopicResponse]
-    def response(message)
-      topic_responses.detect {|response| response.topic_name == message.topic_name}
+    def response_for(topic_message)
+      topic_responses.detect {|response| response.topic_name == topic_message.topic_name}
     end
 
     # Identify messages which have failed
     # @return [Array<Neptune::PartitionMessage>]
     def failed_messages(topic_messages)
       topic_messages.inject([]) do |failed, topic_message|
-        partition_messages = response(topic_message).failed_messages(topic_message.partition_messages)
+        partition_messages = response_for(topic_message).failed_messages(topic_message.partition_messages)
         failed << TopicMessage.new(:topic_name => topic_message.topic_name, :partition_messages => partition_messages) if partition_messages.any?
         failed
       end
@@ -123,11 +132,11 @@ module Neptune
 
     # Identify messages which can be retried
     # @return [Array<Neptune::PartitionMessage>]
-    def retryable_messages(topic_messages)
-      topic_messages.inject([]) do |retryable, topic_message|
-        partition_messages = response(topic_message).retryable_messages(topic_message.partition_messages)
-        retryable << TopicMessage.new(:topic_name => topic_message.topic_name, :partition_messages => partition_messages) if partition_messages.any?
-        retryable
+    def retriable_messages(topic_messages)
+      topic_messages.inject([]) do |retriable, topic_message|
+        partition_messages = response_for(topic_message).retriable_messages(topic_message.partition_messages)
+        retriable << TopicMessage.new(:topic_name => topic_message.topic_name, :partition_messages => partition_messages) if partition_messages.any?
+        retriable
       end
     end
   end

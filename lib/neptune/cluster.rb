@@ -65,7 +65,7 @@ module Neptune
     # Whether a refresh of the cluster metadata is needed
     # @return [Boolean]
     def refresh?
-      !@last_refreshed_at || (Time.now - @last_refreshed_at) * 1000 > config[:metadata_refresh_interval]
+      !@last_refreshed_at || (Time.now - @last_refreshed_at) * 1000 >= config[:metadata_refresh_interval]
     end
 
     # Refreshes the metadata associated with the given topics
@@ -77,6 +77,7 @@ module Neptune
       topic_names += topics.map(&:name)
       topic_names.uniq!
 
+      # Attempt a refresh on the first available broker
       index = 0
       begin
         metadata = brokers.values[index].metadata(topic_names)
@@ -96,46 +97,58 @@ module Neptune
         end
 
         @last_refreshed_at = Time.now
+        true
       rescue ConnectionError => ex
         logger.warn "[Neptune] Failed to retrieve metadata: #{ex.message}"
         if index == brokers.count
+          # No more brokers left to try on: raise
           raise if options[:raise_on_error]
         else
+          # Try on the next broker
           index += 1
           retry
         end
       end
-
-      true
     end
 
+    # Send a value to a given topic
     # @param [Hash] options The produce options
     # @option options [Fixnum] :ack_timeout (100) The total number of playlists to get
     # @option options [Fixnum] :required_acks (0) The number of playlists to skip when loading the list
     def produce(topic_name, value, key = nil)
-      attempt(config[:retry_produce_count]) do
+      topic_messages = nil
+
+      retriable(config[:retry_produce_count]) do
         topic = self.topic(topic_name)
         partition = topic.partition_for(key)
-        # TODO: Handle unavailable partition
 
-        topic_messages = [TopicMessage.new(
-          :topic_name => topic_name,
-          :partition_messages => [
-            PartitionMessage.new(
-              :partition_id => partition.id,
-              :messages => [Message.new(:key => key, :value => value)]
-            )
-          ]
-        )]
+        if partition
+          # Build the list of messages to send
+          topic_messages ||= [TopicMessage.new(
+            :topic_name => topic_name,
+            :partition_messages => [
+              PartitionMessage.new(
+                :partition_id => partition ? partition.id : -1,
+                :messages => [Message.new(:key => key, :value => value)]
+              )
+            ]
+          )]
 
-        response = partition.leader.produce(topic_messages)
-        if response != true && !response.success?
-          if response.retryable_messages.any?
-            response.error_code
-          else
-            # Stop further attempts since the request can't be be retried
-            throw :halt, response.error_code
+          response = partition.leader.produce(topic_messages)
+          if !response.success?
+            topic_messages = response.retriable_messages(topic_messages)
+
+            if topic_messages.any?
+              # Retry the new set of messages
+              response.error_name
+            else
+              # Stop further attempts since the request can't be be retried
+              throw :halt, response.error_name
+            end
           end
+        else
+          # No partition was found to be available for this message
+          :partition_unavailable
         end
       end
 
@@ -153,16 +166,18 @@ module Neptune
     # 
     # To halt events, simply `throw :halt` with the error code that's causing
     # the problem.
-    def attempt(retries, errors = [ConnectionError])
+    def retriable(attempts, exceptions = [ConnectionError])
       error = nil
 
       halt_error = catch(:halt) do
-        retries.times do
+        attempts.times do |attempt|
           begin
             break unless error = yield
-          rescue *errors => ex
-            logger.warn "[Neptune] Failed to call Kafka API: #{ex.message}"
+          rescue *exceptions => ex
+            logger.warn "[Neptune] Failed to call Kafka API on attempt ##{attempt}: #{ex.message}"
+          end
 
+          if attempt < attempts - 1
             # Force a refresh and backoff a little bit
             @last_refreshed_at = nil
             sleep(config[:retry_backoff] / 1000.0)
