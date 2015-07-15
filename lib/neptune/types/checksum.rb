@@ -8,7 +8,7 @@ module Neptune
     class Checksum
       # Converts the given value to its Kafka format
       def self.to_kafka(value, buffer)
-        result = Zlib.crc32(buffer.peek(buffer.size))
+        result = Int32.to_kafka(Zlib.crc32(buffer.peek(buffer.size)))
         result.prepend(Int32.to_kafka(buffer.size + result.size))
         result
       end
