@@ -6,7 +6,7 @@ require 'neptune/topic'
 module Neptune
   class MetadataRequest < Request
     # @return [Array<String>]
-    attribute :topic_names, [String]
+    attribute :topic_names, [Types::String]
 
     def initialize(*) #:nodoc:
       super

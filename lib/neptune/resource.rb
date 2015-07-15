@@ -49,7 +49,6 @@ module Neptune
       #   @!attribute [r] $1
       def attribute(name, type, &block)
         # Track the definition for usage later
-        type = Types::String if type == ::String
         attributes[name] = type
 
         # Reader
@@ -88,7 +87,8 @@ module Neptune
               if type.is_a?(Array)
                 type = type.first
                 value.reverse.each {|v| buffer.prepend(type.to_kafka(v))}
-                buffer.prepend(Types::Int32.to_kafka(value.size)) unless type.attributes.key?(:size)
+                # FIXME
+                buffer.prepend(Types::Int32.to_kafka(value.size)) if !type.respond_to?(:attributes) || !type.attributes.key?(:size)
               else
                 buffer.prepend(type.to_kafka(value))
               end
@@ -140,7 +140,7 @@ module Neptune
               case type
               when Array
                 type = type.first
-                if type.attributes.key?(:size)
+                if !type.respond_to?(:attributes) || !type.attributes.key?(:size)
                   if resource.size
                     array_buffer = Buffer.new(buffer.read(resource.size))
                   else

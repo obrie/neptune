@@ -45,7 +45,7 @@ module Neptune
 
   class ProduceTopicResponse < Resource
     # @return [String]
-    attribute :topic_name, String
+    attribute :topic_name, Types::String
 
     # @return [Array<ProducePartitionResponse>]
     attribute :partition_responses, [ProducePartitionResponse]

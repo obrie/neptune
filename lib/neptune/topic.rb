@@ -5,11 +5,11 @@ module Neptune
   class Topic < Resource
     # The error code when loading metadata for the partition
     # @return [Fixnum]
-    attribute :error_code, :int16
+    attribute :error_code, Int16
 
     # The name of the topic
     # @return [String]
-    attribute :name, :string
+    attribute :name, Types::String
 
     # The list of partitions for the topic
     # @return [Array<Neptune::Partition>]

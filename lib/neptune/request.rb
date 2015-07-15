@@ -15,7 +15,7 @@ module Neptune
     attribute :correlation_id, Int32
 
     # @return [String]
-    attribute :client_id, String
+    attribute :client_id, Types::String
 
     def initialize(*) #:nodoc:
       super
