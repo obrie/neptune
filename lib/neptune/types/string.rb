@@ -1,3 +1,5 @@
+require 'neptune/types/int16'
+
 module Neptune
   module Types
     # Provides typecasting for String data

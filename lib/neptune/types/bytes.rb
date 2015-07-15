@@ -1,3 +1,5 @@
+require 'neptune/types/int32'
+
 module Neptune
   module Types
     # Provides typecasting for Byte data
