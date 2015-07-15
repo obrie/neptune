@@ -28,7 +28,7 @@ module Neptune
     # Creates a new Kafka cluster with the given seed brokers.
     def initialize(brokers = ['localhost:9092'], config = {})
       @brokers = {}
-      @topics = []
+      @topics = {}
       @config = Config.new(config)
       @connections = Hash.new do |connections, uri|
         host, port = uri.split(':')
@@ -79,7 +79,7 @@ module Neptune
 
       index = 0
       begin
-        metadata = brokers[index].metadata(topic_names)
+        metadata = brokers.values[index].metadata(topic_names)
 
         # Update topics
         metadata.topics.each do |topic|
