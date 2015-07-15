@@ -1,5 +1,3 @@
-require 'zlib'
-
 module Neptune
   # Represents binary strings
   class Buffer
@@ -20,12 +18,6 @@ module Neptune
     def prepend(value)
       @str.prepend(value.dup.force_encoding(Encoding::BINARY))
       self
-    end
-
-    # The CRC32 checksum for the buffer starting at the current position
-    # @return [Fixnum]
-    def checksum(length = bytes_remaining)
-      Zlib.crc32(peek(length))
     end
 
     # The current length of the buffer
