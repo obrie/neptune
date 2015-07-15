@@ -9,7 +9,7 @@ module Neptune
 
     # The broker's hostname
     # @return [String]
-    attribute :host, String
+    attribute :host, Types::String
 
     # The broker's port number
     # @return [Fixnum]
@@ -83,6 +83,7 @@ module Neptune
 
     # Reads a response from the connection
     def read(response_class)
+      connection.verify
       response_class.from_kafka(connection.read)
     end
 
@@ -90,6 +91,8 @@ module Neptune
     def write(request)
       request.client_id = cluster.config.client_id
       request.correlation_id = next_correlation_id
+
+      connection.verify
       connection.write(request.to_kafka)
     end
   end
