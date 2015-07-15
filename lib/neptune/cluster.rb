@@ -128,7 +128,7 @@ module Neptune
         )]
 
         response = partition.leader.produce(topic_messages)
-        if !response.success?
+        if response != true && !response.success?
           if response.retryable_messages.any?
             response.error_code
           else

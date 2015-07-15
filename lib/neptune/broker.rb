@@ -50,8 +50,8 @@ module Neptune
     # @return [ProduceResponse]
     def produce(topic_messages)
       request = ProduceRequest.new(
-        :required_acks => config[:required_acks],
-        :ack_timeout => config[:ack_timeout],
+        :required_acks => cluster.config[:required_acks],
+        :ack_timeout => cluster.config[:ack_timeout],
         :topic_messages => topic_messages
       )
 
@@ -60,7 +60,7 @@ module Neptune
       if request.required_acks != 0
         read(ProduceResponse)
       else
-        true
+        ProduceResponse.new
       end
     end
 

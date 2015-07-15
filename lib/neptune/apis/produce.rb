@@ -79,6 +79,11 @@ module Neptune
     # @return [Array<ProduceTopicResponse>]
     attribute :topic_responses, ArrayOf[ProduceTopicResponse]
 
+    def initialize(*) #:nodoc:
+      super
+      @topic_responses ||= []
+    end
+
     # Whether all messages were successfully produced
     # @return [Boolean]
     def success?
