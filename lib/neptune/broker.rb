@@ -26,7 +26,10 @@ module Neptune
     def initialize(*) #:nodoc:
       super
       @correlation_id = 0
-      @connection = cluster.connections[uri]
+    end
+
+    def connection
+      @connection ||= cluster.connections[uri]
     end
 
     # The URI for this broker

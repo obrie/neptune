@@ -83,12 +83,14 @@ module Neptune
 
         # Update topics
         metadata.topics.each do |topic|
+          topic.cluster = self
           topics[topic.name] = topic
         end
 
         # Update brokers
         metadata.brokers.each do |broker|
           # Index by ID and remove any indexes by URI since the ID is now known
+          broker.cluster = self
           brokers[broker.id] = broker
           brokers.delete(broker.uri)
         end
