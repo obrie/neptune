@@ -15,16 +15,6 @@ module Neptune
         end
       end
 
-      # Whether the resource can be truncated
-      # @return [Boolean]
-      def truncatable?
-        if @truncatable.nil?
-          @truncatable = false
-        end
-        @truncatable
-      end
-      attr_writer :truncatable
-
       # The attributes defined for the resource
       # @return [Hash]
       def attributes
@@ -49,6 +39,7 @@ module Neptune
       #   @!attribute [r] $1
       def attribute(name, type, &block)
         # Track the definition for usage later
+        type = Types::String if type == ::String
         attributes[name] = type
 
         # Reader
@@ -74,24 +65,10 @@ module Neptune
         # when the checksum / size is being calculated (if applicable)
         attributes.keys.reverse.each do |attr|
           type = attributes[attr]
+          value = resource[attr]
 
           begin
-            case attr
-            when :checksum
-              buffer.prepend(type.to_kafka(buffer.checksum))
-            when :size
-              buffer.prepend(type.to_kafka(buffer.size))
-            else
-              value = resource[attr]
-
-              if type.is_a?(Array)
-                type = type.first
-                value.reverse.each {|v| buffer.prepend(type.to_kafka(v))}
-                buffer.prepend(Types::Int32.to_kafka(value.size)) if !type.respond_to?(:attributes) || !type.attributes.key?(:size)
-              else
-                buffer.prepend(type.to_kafka(value))
-              end
-            end
+            buffer.prepend(type.to_kafka(value, buffer))
           rescue => ex
             raise EncodingError.new("#{ex.class}: #{ex.message}", ex)
           end
@@ -102,86 +79,25 @@ module Neptune
 
       # Converts from the Kafka data in the current buffer's position
       def from_kafka(buffer)
-        resource = new
+        catch(:halt) do
+          resource = new
 
-        # Validate size / checksum
-        if attributes.key?(:size)
-          # Check if remainder of message is truncated
-          if truncatable? && buffer.bytes_remaining >= header_bytes
-            resource.truncated = true
-            return
+          attributes.each do |attr, type|
+            begin
+              value = type.from_kafka(buffer)
+              resource[attr] = value unless value.nil?
+            rescue DecodingError
+              # Just re-raise instead of producing a nested exception
+              raise
+            rescue => ex
+              raise DecodingError.new("#{ex.class}: #{ex.message}", ex)
+            end
           end
 
-          # Determine the data size
-          resource.size = attributes[:size].from_kafka(buffer)
-
-          if attributes.key?(:checksum)
-            # Determine the valid checksum
-            resource.checksum = attributes[:checksum].from_kafka(buffer)
-            computed_checksum = [buffer.checksum(resource.size - 4)].pack('l>').unpack('l>').first
-            
-            resource.checksum_failed = resource.checksum != computed_checksum
-            expected_bytes_remaining = resource.size - 4
-          else
-            expected_bytes_remaining = resource.size
-          end
-
-          # Check if remainder of message is truncated
-          if truncatable? && expected_bytes_remaining > buffer.bytes_remaining
-            resource.truncated = true
-            return
-          end
-        end
-
-        attributes.reject {|attr| [:size, :checksum].include?(attr)}.each do |attr, type|
-          begin
-            resource[attr] =
-              case type
-              when Array
-                type = type.first
-                if type.respond_to?(:attributes) && type.attributes.key?(:size)
-                  if resource.size
-                    array_buffer = Buffer.new(buffer.read(resource.size))
-                  else
-                    array_buffer = buffer
-                  end
-
-                  array = []
-                  while !array_buffer.eof? && (v = type.from_kafka(array_buffer))
-                    array << v
-                  end
-                  array
-                else
-                  Types::Int32.from_kafka(buffer).times.map { type.from_kafka(buffer) }
-                end
-              else
-                type.from_kafka(buffer)
-              end
-          rescue DecodingError
-            # Just re-raise instead of producing a nested exception
-            raise
-          rescue => ex
-            raise DecodingError.new("[Neptune] #{ex.class}: #{ex.message}", ex)
-          end
-        end
-
-        resource
-      end
-
-      # The number of bytes expected to be in the header
-      # @return [Fixnum]
-      def header_bytes
-        if attributes.key?(:checksum)
-          header_bytes = 8
-        else
-          header_bytes = 4
+          resource
         end
       end
     end
-
-    # Whether the resource has been truncated
-    # @return [Boolean]
-    attr_accessor :truncated
 
     # Initializes this resources with the given attributes.  This will continue
     # to call the superclass's constructor with any additional arguments that
@@ -189,7 +105,6 @@ module Neptune
     # 
     # @api private
     def initialize(attributes = {}, *args)
-      @truncated = false
       self.attributes = attributes
       super(*args)
     end
@@ -216,12 +131,6 @@ module Neptune
           __send__("#{attribute}=", value) if respond_to?("#{attribute}=", true)
         end
       end
-    end
-
-    # Whether the resource's contents were truncated
-    # @return [Boolean]
-    def truncated?
-      @truncated
     end
 
     # The name of the error associated with the current error code
@@ -251,7 +160,12 @@ module Neptune
     # @api private
     # @return [Array<Symbol>]
     def pretty_print_instance_variables
-      (instance_variables - [:'@cluster', :'@config']).sort
+      (instance_variables - pretty_print_ignore).sort
+    end
+
+    private
+    def pretty_print_ignore #:nodoc:
+      []
     end
   end
 end

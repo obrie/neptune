@@ -9,7 +9,7 @@ module Neptune
     attribute :ack_timeout, Int32
 
     # @return [Array<Neptune::TopicMessage>]
-    attribute :topic_messages, [TopicMessage]
+    attribute :topic_messages, ArrayOf[TopicMessage]
 
     # @return [Array<Neptune::ProduceResponse>]
     attr_accessor :response
@@ -45,10 +45,10 @@ module Neptune
 
   class ProduceTopicResponse < Resource
     # @return [String]
-    attribute :topic_name, Types::String
+    attribute :topic_name, String
 
     # @return [Array<ProducePartitionResponse>]
-    attribute :partition_responses, [ProducePartitionResponse]
+    attribute :partition_responses, ArrayOf[ProducePartitionResponse]
 
     # Whether all partitions were produced to successfully
     # @return [Boolean]
@@ -77,7 +77,7 @@ module Neptune
 
   class ProduceResponse < Resource
     # @return [Array<ProduceTopicResponse>]
-    attribute :topic_responses, [ProduceTopicResponse]
+    attribute :topic_responses, ArrayOf[ProduceTopicResponse]
 
     # Whether all messages were successfully produced
     # @return [Boolean]

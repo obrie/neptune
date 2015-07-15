@@ -9,7 +9,7 @@ module Neptune
 
     # The broker's hostname
     # @return [String]
-    attribute :host, Types::String
+    attribute :host, String
 
     # The broker's port number
     # @return [Fixnum]
@@ -97,6 +97,10 @@ module Neptune
 
       connection.verify
       connection.write(request.to_kafka)
+    end
+
+    def pretty_print_ignore #:nodoc:
+      [:'@cluster']
     end
   end
 end

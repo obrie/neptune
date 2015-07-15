@@ -2,6 +2,7 @@ require 'neptune/partition'
 require 'neptune/resource'
 
 module Neptune
+  # A category or feed name to which messages are published
   class Topic < Resource
     # The error code when loading metadata for the partition
     # @return [Fixnum]
@@ -9,11 +10,11 @@ module Neptune
 
     # The name of the topic
     # @return [String]
-    attribute :name, Types::String
+    attribute :name, String
 
     # The list of partitions for the topic
     # @return [Array<Neptune::Partition>]
-    attribute :partitions, [Partition] do
+    attribute :partitions, ArrayOf[Partition] do
       partitions.each {|partition| partition.topic = self}
     end
 
@@ -49,6 +50,7 @@ module Neptune
     def partition_for(key)
       if leader_available?
         if key
+          # Use the configured partitioner
           partition_id = cluster.config.partitioner.call(key, partitions.count)
           partition(partition_id) || raise(InvalidPartitionError.new("Partition #{partition_id} is invalid for Topic #{name}"))
         elsif available_partitions.any?
@@ -75,6 +77,10 @@ module Neptune
     # @return [Fixnum]
     def next_partition_counter
       @partition_counter += 1
+    end
+
+    def pretty_print_ignore #:nodoc:
+      [:'@cluster']
     end
   end
 end

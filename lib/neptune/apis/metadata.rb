@@ -6,7 +6,7 @@ require 'neptune/topic'
 module Neptune
   class MetadataRequest < Request
     # @return [Array<String>]
-    attribute :topic_names, [Types::String]
+    attribute :topic_names, ArrayOf[String]
 
     def initialize(*) #:nodoc:
       super
@@ -16,9 +16,9 @@ module Neptune
 
   class MetadataResponse < Response
     # @return [Array<Neptune::Broker]
-    attribute :brokers, [Broker]
+    attribute :brokers, ArrayOf[Broker]
 
     # @return [Array<Neptune::Topic]
-    attribute :topics, [Topic]
+    attribute :topics, ArrayOf[Topic]
   end
 end

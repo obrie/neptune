@@ -31,7 +31,6 @@ module Neptune
   # Data parse errors
   class EncodingError < Error;end
   class DecodingError < Error;end
-  class ChecksumError < Error; end
 
   # Connection errors
   class ConnectionError < Error; end

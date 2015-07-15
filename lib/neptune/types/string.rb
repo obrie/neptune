@@ -5,7 +5,8 @@ module Neptune
     # Provides typecasting for String data
     class String
       # Converts the given value to its Kafka format
-      def self.to_kafka(value)
+      # @return [String]
+      def self.to_kafka(value, *)
         if value.nil?
           Int16.to_kafka(-1)
         else
@@ -14,6 +15,7 @@ module Neptune
       end
 
       # Converts from the Kafka data in the current buffer's position
+      # @return [String]
       def self.from_kafka(buffer)
         length = Int16.from_kafka(buffer)
         buffer.read(length)

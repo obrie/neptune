@@ -17,11 +17,11 @@ module Neptune
 
     # The ids of the brokers that are acting as slaves for the leader
     # @return [Array<Fixnum>]
-    attribute :replica_ids, [Int32]
+    attribute :replica_ids, ArrayOf[Int32]
 
     # The ids of replicas that are "caught up" to the leader
     # @return [Array<Fixnum>]
-    attribute :synced_replica_ids, [Int32]
+    attribute :synced_replica_ids, ArrayOf[Int32]
 
     # The topic this partition belongs to
     # @return [Neptune::Cluster]
@@ -54,6 +54,10 @@ module Neptune
     private
     def cluster #:nodoc:
       topic.cluster
+    end
+
+    def pretty_print_ignore #:nodoc:
+      [:'@topic']
     end
   end
 end

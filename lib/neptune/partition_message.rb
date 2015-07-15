@@ -2,6 +2,7 @@ require 'neptune/message'
 require 'neptune/resource'
 
 module Neptune
+  # A set of messages for a given partition
   class PartitionMessage < Resource
     # The partition this message belongs to
     # @return [Fixnum]
@@ -9,7 +10,7 @@ module Neptune
 
     # The actual collection of messages
     # @return [Array<Neptune::Message>]
-    attribute :messages, [Message]
+    attribute :messages, SizeBoundArrayOf[Message]
 
     def initialize(*) #:nodoc:
       super
