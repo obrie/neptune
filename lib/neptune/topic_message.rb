@@ -10,5 +10,10 @@ module Neptune
     # Messages by partition
     # @return [Array<Neptune::PartitionMessage>]
     attribute :partition_messages, [PartitionMessage]
+
+    def initialize(*) #:nodoc:
+      super
+      @partition_messages ||= []
+    end
   end
 end

@@ -7,20 +7,28 @@ module Neptune
   # encapsulates responsibilities for defining schema structure.
   class Resource
     class << self
-      # Whether the resource can be truncated
-      # @return [Boolean]
-      attr_accessor :truncatable
-
-      # The attributes defined for the resource
-      # @return [Hash]
-      attr_reader :attributes
-
       def const_missing(name) #:nodoc:
         begin
           Types.const_get(name.to_s)
         rescue NameError
           super
         end
+      end
+
+      # Whether the resource can be truncated
+      # @return [Boolean]
+      def truncatable
+        if @truncatable.nil?
+          @truncatable = false
+        end
+        @truncatable
+      end
+      attr_writer :truncatable
+
+      # The attributes defined for the resource
+      # @return [Hash]
+      def attributes
+        @attributes ||= {}
       end
 
       # Defines a new Kafka attribute on this class.
@@ -40,6 +48,10 @@ module Neptune
       # @!macro [attach] attribute
       #   @!attribute [r] $1
       def attribute(name, type, &block)
+        # Track the definition for usage later
+        type = Types::String if type == ::String
+        attributes[name] = type
+
         # Reader
         attr_reader(name)
 
@@ -76,7 +88,7 @@ module Neptune
               if type.is_a?(Array)
                 type = type.first
                 value.reverse.each {|v| buffer.prepend(type.to_kafka(v))}
-                buffer.prepend(value.size) unless type.attributes.key?(:size)
+                buffer.prepend(Types::Int32.to_kafka(value.size)) unless type.attributes.key?(:size)
               else
                 buffer.prepend(type.to_kafka(value))
               end
@@ -90,7 +102,7 @@ module Neptune
       end
 
       # Converts from the Kafka data in the current buffer's position
-      def self.from_kafka(buffer)
+      def from_kafka(buffer)
         resource = new
 
         # Validate size / checksum
@@ -166,10 +178,8 @@ module Neptune
       end
     end
 
-    @truncatable = false
-    @attributes = {}
-
     # Whether the resource has been truncated
+    # @return [Boolean]
     attr_accessor :truncated
 
     # Initializes this resources with the given attributes.  This will continue

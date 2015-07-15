@@ -10,5 +10,10 @@ module Neptune
     # The actual collection of messages
     # @return [Array<Neptune::Message>]
     attribute :messages, [Message]
+
+    def initialize(*) #:nodoc:
+      super
+      @messages ||= []
+    end
   end
 end

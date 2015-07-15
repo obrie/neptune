@@ -19,7 +19,7 @@ module Neptune
 
     def initialize(*) #:nodoc:
       super
-      self.api_version = 0
+      self.api_version ||= 0
     end
   end
 end
