@@ -80,7 +80,7 @@ module Neptune
     # Generates a hash containing the given configuration options
     # @return [Hash]
     def slice(*keys)
-      keys.inject({}) {|h, key| h[key] = self[key]; h}
+      keys.each_with_object({}) {|key, h| h[key] = self[key]}
     end
   end
 end

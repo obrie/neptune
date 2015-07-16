@@ -122,9 +122,8 @@ module Neptune
     # The attributes defined for this resource
     # @return [Hash]
     def attributes
-      self.class.attributes.keys.inject({}) do |attributes, attr|
+      self.class.attributes.each_with_object({}) do |(attr, type), attributes|
         attributes[attr] = self[attr]
-        attributes
       end
     end
 
