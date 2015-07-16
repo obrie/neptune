@@ -6,9 +6,9 @@ client.
 Features currently implemented:
 * Metadata
 * Produce
+* Compression
 
 Upcoming features:
-* Compression
 * Fetch
 * Offset management
 
