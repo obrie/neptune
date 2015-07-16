@@ -1,15 +1,24 @@
 # Neptune
 
-Neptune is a Kafka client. It's a fork of the [Poseidon](http://github.com/bpot/poseidon) client.
+Neptune is a Kafka client. It's a distant fork of the [Poseidon](http://github.com/bpot/poseidon)
+client.
 
-The only features that are currently implemented include:
+Features currently implemented:
 * Metadata
 * Produce
 
-To be implemented:
+Upcoming features:
 * Compression
 * Fetch
 * Offset management
+
+## Background
+
+Why a new Kafka library for Ruby?  These are some areas I was looking to improve upon:
+* Active maintenance
+* Code design / clarity
+* Error handling
+* API cleanup
 
 ## Usage
 
@@ -17,7 +26,7 @@ To be implemented:
 require 'neptune'
 
 cluster = Neptune::Cluster.new(['localhost:9092'], client_id: 'my_test_producer')
-cluster.topic('topic1', 'value1')
+cluster.topic('topic1')
 cluster.produce('topic1', 'value1')
 cluster.produce!('topic1', 'value1', 'key1')
 cluster.batch do
