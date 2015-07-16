@@ -66,11 +66,9 @@ module Neptune
         # Process in reverse order so that the buffer has all the necessary data
         # when the checksum / size is being calculated (if applicable)
         attributes.keys.reverse.each do |attr|
-          type = attributes[attr]
-          value = resource[attr]
-
           begin
-            buffer.prepend(type.to_kafka(value, buffer))
+            value = resource.read_kafka_attribute(attr, buffer)
+            buffer.prepend(value)
           rescue => ex
             raise EncodingError.new("#{ex.class}: #{ex.message}", ex)
           end
@@ -87,8 +85,7 @@ module Neptune
 
           attributes.each do |attr, type|
             begin
-              value = type.from_kafka(buffer)
-              resource[attr] = value unless value.nil?
+              resource.write_kafka_attribute(attr, buffer)
             rescue DecodingError
               # Just re-raise instead of producing a nested exception
               raise
@@ -141,6 +138,22 @@ module Neptune
           self[attr] = value
         end
       end
+    end
+
+    # Reads the value from the given attribute and converts it to Kafka format
+    # @return [String]
+    def read_kafka_attribute(attr, *args)
+      type = self.class.attributes[attr]
+      value = self[attr]
+      type.to_kafka(value, *args)
+    end
+
+    # Writes to the given attribute from a Kafka buffer
+    # @private
+    def write_kafka_attribute(attr, buffer)
+      type = self.class.attributes[attr]
+      value = type.from_kafka(buffer)
+      self[attr] = value unless value.nil?
     end
 
     # Converts this class to its Kafka data representation
