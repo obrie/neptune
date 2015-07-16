@@ -1,8 +1,8 @@
 module Neptune
   # Represents binary strings
   class Buffer
-    def initialize(str = ''.encode(Encoding::BINARY)) #:nodoc:
-      @str = str
+    def initialize(str = '') #:nodoc:
+      @str = str.encode(Encoding::BINARY)
       @pos = 0
     end
 
@@ -28,7 +28,7 @@ module Neptune
 
     # Retrieves the given number of bytes, moving the current position
     # @return [String]
-    def read(length)
+    def read(length = bytes_remaining)
       value = @str.byteslice(@pos, length)
       @pos += length
       value

@@ -1,3 +1,4 @@
+require 'neptune/compression'
 require 'neptune/partition'
 require 'neptune/resource'
 
@@ -25,6 +26,18 @@ module Neptune
     def initialize(*) #:nodoc:
       super
       @partition_counter = 0
+    end
+
+    # The compression codec being used in this topic
+    # @return [Class]
+    def compression_codec
+      Compression.find_by_name(cluster.config.compression_codec) if compressed?
+    end
+
+    # Whether this topic is compressed
+    # @return [Boolean]
+    def compressed?
+      cluster.config.compressed_topics.include?(name)
     end
 
     # Whether this topic exists in the cluster

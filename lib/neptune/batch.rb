@@ -38,7 +38,7 @@ module Neptune
       # Track remaining messages to be processed
       remaining = Set.new(@messages)
 
-      @cluster.retriable(@cluster.config[:retry_produce_count]) do
+      @cluster.retriable do
         by_leader = messages_by_leader(remaining)
         by_leader.each do |leader, by_topic|
           # Create topic messages
@@ -107,12 +107,14 @@ module Neptune
       TopicMessage.new(
         topic_name: topic.name,
         partition_messages: by_partition.map do |partition, messages|
-          PartitionMessage.new(
+          partition_message = PartitionMessage.new(
             partition_id: partition.id,
             messages: messages.map do |message|
               Message.new(key: message[:key], value: message[:value])
             end
           )
+          partition_message.compress(topic.compression_codec) if topic.compressed?
+          partition_message
         end
       )
     end

@@ -8,6 +8,10 @@ module Neptune
     # @return [String]
     attr_accessor :client_id
 
+    # The topics that are configured to store compressed messages
+    # @return [Array<String>]
+    attr_accessor :compressed_topics
+
     # The codec being used to compress messages
     # @return [String]
     attr_accessor :compression_codec
@@ -21,9 +25,9 @@ module Neptune
     # @return [Proc]
     attr_accessor :partitioner
 
-    # The number of times to retry before failing produce API calls
+    # The number of times to retry before failing API calls
     # @return [Fixnum]
-    attr_accessor :retry_produce_count
+    attr_accessor :retry_count
 
     # The amount of time to wait (in ms) between retries
     # @return [Fixnum]
@@ -55,13 +59,14 @@ module Neptune
       options = {
         partitioner: lambda {|key, partition_count| Zlib::crc32(key) % partition_count},
         metadata_refresh_interval: 600_000,
-        retry_produce_count: 3,
+        retry_count: 3,
         retry_backoff: 100,
         required_acks: 0,
         ack_timeout: 1_500,
         read_timeout: 10_000,
         write_timeout: 10_000,
-        connect_timeout: 10_000
+        connect_timeout: 10_000,
+        compressed_topics: []
       }.merge(options)
       options.each {|option, value| send("#{option}=", value)}
     end

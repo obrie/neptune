@@ -184,7 +184,8 @@ module Neptune
     # the problem.
     # 
     # @return [Boolean] whether the block completed successfully
-    def retriable(attempts, exceptions = [ConnectionError])
+    def retriable(exceptions = [ConnectionError])
+      attempts = config[:retry_count]
       completed = false
 
       catch(:halt) do
