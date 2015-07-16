@@ -5,8 +5,8 @@ module Neptune
   # An ordered, immutable sequence of messages within a topic
   class Partition < Resource
     # The error code when loading metadata for the partition
-    # @return [Fixnum]
-    attribute :error_code, Int16
+    # @return [Neptune::ErrorCode]
+    attribute :error_code, ErrorCode
 
     # The unique identifier for the partition
     # @return [Fixnum]
@@ -27,12 +27,6 @@ module Neptune
     # The topic this partition belongs to
     # @return [Neptune::Cluster]
     attr_accessor :topic
-
-    # The name of the error associated with the current error code
-    # @return [Symbol]
-    def error_name
-      ERROR_CODES[error_code]
-    end
 
     # The broker currently acting as leader
     # @return [Neptune::Broker]
@@ -55,7 +49,7 @@ module Neptune
     # Whether the partition is available for access
     # @return [Boolean]
     def available?
-      (error_name == :no_error || error_name == :replica_not_available) && leader
+      error_code.is?(:no_error, :replica_not_available)
     end
 
     private

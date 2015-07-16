@@ -5,8 +5,8 @@ module Neptune
   # A category or feed name to which messages are published
   class Topic < Resource
     # The error code when loading metadata for the partition
-    # @return [Fixnum]
-    attribute :error_code, Int16
+    # @return [Neptune::ErrorCode]
+    attribute :error_code, ErrorCode
 
     # The name of the topic
     # @return [String]
@@ -27,28 +27,28 @@ module Neptune
       @partition_counter = 0
     end
 
-    # The name of the error associated with the current error code
-    # @return [Symbol]
-    def error_name
-      ERROR_CODES[error_code]
-    end
-
     # Whether this topic exists in the cluster
     # @return [Boolean]
     def exists?
-      error_name == :no_error
+      error_code == :no_error
     end
 
     # Whether a leader is available for this topic
     # @return [Boolean]
     def leader_available?
-      error_name != :leader_not_available
+      error_code != :leader_not_available
     end
 
     # Looks up the partition with the given id
     # @return [Neptune::Partition]
     def partition(id)
       partitions.detect {|partition| partition.id == id}
+    end
+
+    # Looks up the partitions that are currently available for access
+    # @return [Array<Neptune::Partition>]
+    def available_partitions
+      partitions.select {|partition| partition.available?}
     end
 
     # Determines the partition for the given key
@@ -67,18 +67,6 @@ module Neptune
     end
 
     private
-    # Looks up the partition with the given id
-    # @return [Fixnum]
-    def partition(id)
-      partitions.detect {|partition| partition.id == id}
-    end
-
-    # Looks up the partitions that are currently available for access
-    # @return [Array<Neptune::Partition>]
-    def available_partitions
-      partitions.select {|partition| partition.available?}
-    end
-
     # Counter used to round-robin between partitions
     # @return [Fixnum]
     def next_partition_counter

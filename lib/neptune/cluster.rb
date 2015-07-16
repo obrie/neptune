@@ -1,3 +1,4 @@
+require 'neptune/batch'
 require 'neptune/broker'
 require 'neptune/config'
 require 'neptune/loggable'
@@ -50,9 +51,9 @@ module Neptune
       @brokers[id]
     end
 
-    # Looks up the topic with the given name.  If the topic metadata doesn't
-    # already exist, it'll be looked up in the cluster.
-    # @return [Neptune::Topic]
+    # Looks up the topic with the given name.  Missing topic metadata will be
+    # looked up in the cluster.
+    # @return [Neptune::Topic] the topic `nil` if the topic is unknown
     def topic(name)
       if !@topics.key?(name)
         refresh([name])
@@ -63,6 +64,13 @@ module Neptune
       end
 
       @topics[name]
+    end
+
+    # Looks up the topic with the given name.
+    # @raise [Neptune::InvalidTopicError] if the topic is not found
+    # @return [Neptune::Topic]
+    def topic!(name)
+      topic(name) || raise(InvalidTopicError.new("Unknown topic: #{name.inspect}"))
     end
 
     # Whether a refresh of the cluster metadata is needed
@@ -114,88 +122,89 @@ module Neptune
       end
     end
 
+    # Forces a refresh the next time metadata attempts to be accessed for a
+    # topic
+    def reset_refresh
+      @last_refreshed_at = nil
+    end
+
     # Send a value to a given topic
     # @param [Hash] options The produce options
     # @option options [Fixnum] :ack_timeout (100) The total number of playlists to get
     # @option options [Fixnum] :required_acks (0) The number of playlists to skip when loading the list
-    def produce(topic_name, value, key = nil)
-      topic_messages = nil
+    def produce!(topic_name, value, key = nil)
+      if @batch
+        @batch.add(topic_name, value, key)
+      else
+        batch = Batch.new(self) { add(topic_name, value, key) }
+        batch.success? || raise(APIError.new(batch.last_error_code))
+      end
+    end
 
-      retriable(config[:retry_produce_count]) do
-        topic = self.topic(topic_name)
-        partition = topic.partition_for(key)
+    # Send a value to a given topic
+    # @param [Hash] options The produce options
+    # @option options [Fixnum] :ack_timeout (100) The total number of playlists to get
+    # @option options [Fixnum] :required_acks (0) The number of playlists to skip when loading the list
+    def produce(*args)
+      produce!(*args)
+    rescue APIError
+      false
+    end
 
-        if partition
-          # Build the list of messages to send
-          topic_messages ||= [TopicMessage.new(
-            :topic_name => topic_name,
-            :partition_messages => [
-              PartitionMessage.new(
-                :partition_id => partition ? partition.id : -1,
-                :messages => [Message.new(:key => key, :value => value)]
-              )
-            ]
-          )]
-
-          response = partition.leader.produce(topic_messages)
-          if !response.success?
-            topic_messages = response.retriable_messages(topic_messages)
-
-            if topic_messages.any?
-              # Retry the new set of messages
-              response.error_name
-            else
-              # Stop further attempts since the request can't be be retried
-              throw :halt, response.error_name
-            end
-          end
-        else
-          # No partition was found to be available for this message
-          :partition_unavailable
+    # Produces a batch of messages
+    # @yield [Neptune::Batch]
+    # @return [Neptune::Batch]
+    def batch(&block)
+      if @batch
+        yield
+      else
+        batch = Batch.new(self)
+        begin
+          @batch = batch
+          yield
+          @batch.process
+          batch
+        ensure
+          @batch = nil
         end
       end
-
-      true
     end
 
     # Closes all open connections to brokers
+    # @return [Boolean] always true
     def shutdown
       connections.each {|connection| connection.close}
+      true
     end
 
-    private
     # Attempts a block the given number of times.  This will catch allow retry
     # on certain exceptions as well.
     # 
     # To halt events, simply `throw :halt` with the error code that's causing
     # the problem.
+    # 
+    # @return [Boolean] whether the block completed successfully
     def retriable(attempts, exceptions = [ConnectionError])
-      error = nil
-      exception = nil
+      completed = false
 
-      halt_error = catch(:halt) do
+      catch(:halt) do
         attempts.times do |attempt|
           begin
-            break unless error = yield
+            break if completed = yield
           rescue *exceptions => ex
-            exception = ex
             logger.warn "[Neptune] Failed to call Kafka API on attempt ##{attempt}: #{ex.message}"
+            raise if attempt == attempts - 1
           end
 
           if attempt < attempts - 1
             # Force a refresh and backoff a little bit
-            @last_refreshed_at = nil
+            reset_refresh
             sleep(config[:retry_backoff] / 1000.0)
           end
         end
       end
-      error ||= halt_error
 
-      if exception
-        raise Error.new("Failed API call (#{exception.class}: #{exception.message})", exception)
-      elsif error
-        raise Error.new("Failed API call (#{error})")
-      end
+      completed
     end
   end
 end

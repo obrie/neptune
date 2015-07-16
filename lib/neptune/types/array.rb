@@ -39,7 +39,8 @@ module Neptune
       # Converts from the Kafka data in the current buffer's position
       # @return [Array]
       def from_kafka(buffer)
-        Int32.from_kafka(buffer).times.map { type.from_kafka(buffer) }
+        size = Int32.from_kafka(buffer)
+        size.times.map { type.from_kafka(buffer) }
       end
     end
 

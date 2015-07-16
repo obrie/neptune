@@ -1,5 +1,6 @@
 require 'pp'
 require 'neptune/errors'
+require 'neptune/error_code'
 require 'neptune/types'
 
 module Neptune
@@ -121,16 +122,23 @@ module Neptune
       __send__("#{attr}=", value)
     end
 
+    # The attributes defined for this resource
+    # @return [Hash]
+    def attributes
+      self.class.attributes.keys.inject({}) do |attributes, attr|
+        attributes[attr] = self[attr]
+        attributes
+      end
+    end
+
     # Attempts to set attributes on the object only if they've been explicitly
     # defined by the class.
     # 
-    # @api private
     # @param [Hash] attributes The updated attributes for the resource
     def attributes=(attributes)
       if attributes
-        attributes.each do |attribute, value|
-          attribute = attribute.to_s
-          __send__("#{attribute}=", value) if respond_to?("#{attribute}=", true)
+        attributes.each do |attr, value|
+          self[attr] = value
         end
       end
     end
