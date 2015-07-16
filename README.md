@@ -20,6 +20,9 @@ Why a new Kafka library for Ruby?  These are some areas I was looking to improve
 * Error handling
 * API cleanup
 
+While this originated as a fork of [Poseidon](http://github.com/bpot/poseidon), the
+implementation has changed vastly.
+
 ## Usage
 
 ```ruby
