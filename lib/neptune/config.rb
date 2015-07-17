@@ -19,7 +19,7 @@ module Neptune
     # The amount of time to wait (in ms) between refreshes of a cluster's
     # metadata
     # @return [Fixnum]
-    attr_accessor :metadata_refresh_interval
+    attr_accessor :refresh_interval
 
     # The function used to partition messages based on key
     # @return [Proc]
@@ -58,7 +58,7 @@ module Neptune
     def initialize(options = {}) #:nodoc:
       options = {
         partitioner: lambda {|key, partition_count| Zlib::crc32(key) % partition_count},
-        metadata_refresh_interval: 600_000,
+        refresh_interval: 600_000,
         retry_count: 3,
         retry_backoff: 100,
         required_acks: 0,

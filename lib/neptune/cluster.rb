@@ -41,7 +41,7 @@ module Neptune
 
       # Add seed brokers
       brokers.each do |uri|
-        self.brokers[uri] = Broker.new(:uri => uri, :cluster => self)
+        self.brokers[uri] = Broker.new(uri: uri, cluster: self)
       end
     end
 
@@ -60,7 +60,7 @@ module Neptune
       elsif refresh?
         # On periodic refreshes, errors shouldn't prevent the client from
         # continuing to interact with Kafka
-        refresh([name], :raise_on_error => false)
+        refresh([name], raise_on_error: false)
       end
 
       @topics[name]
@@ -76,21 +76,20 @@ module Neptune
     # Whether a refresh of the cluster metadata is needed
     # @return [Boolean]
     def refresh?
-      !@last_refreshed_at || (Time.now - @last_refreshed_at) * 1000 >= config[:metadata_refresh_interval]
+      !@last_refreshed_at || (Time.now - @last_refreshed_at) * 1000 >= config[:refresh_interval]
     end
 
     # Refreshes the metadata associated with the given topics
     # @return [Boolean]
     def refresh(topic_names, options = {})
-      options = {:raise_on_error => true}.merge(options)
+      options = {raise_on_error: true}.merge(options)
 
       # Add already-known topics
       topic_names += topics.map(&:name)
       topic_names.uniq!
 
       # Attempt a refresh on the first available broker
-      index = 0
-      begin
+      retriable('Metadata', attempts: brokers.count, raise_on_error: options[:raise_on_error], backoff: 0) do |index|
         metadata = brokers.values[index].metadata(topic_names)
 
         # Update topics
@@ -109,16 +108,6 @@ module Neptune
 
         @last_refreshed_at = Time.now
         true
-      rescue ConnectionError => ex
-        logger.warn "[Neptune] Failed to retrieve metadata: #{ex.message}"
-        if index == brokers.count - 1
-          # No more brokers left to try on: raise
-          raise if options[:raise_on_error]
-        else
-          # Try on the next broker
-          index += 1
-          retry
-        end
       end
     end
 
@@ -184,23 +173,26 @@ module Neptune
     # the problem.
     # 
     # @return [Boolean] whether the block completed successfully
-    def retriable(exceptions = [ConnectionError])
-      attempts = config[:retry_count]
+    def retriable(api, options = {})
+      attempts = options.fetch(:attempts, config[:retry_count])
+      exceptions = options.fetch(:exceptions, [ConnectionError])
+      raise_on_error = options.fetch(:raise_on_error, true)
+      backoff = options.fetch(:backoff, config[:retry_backoff])
       completed = false
 
       catch(:halt) do
         attempts.times do |attempt|
           begin
-            break if completed = yield
+            break if completed = yield(attempt)
           rescue *exceptions => ex
-            logger.warn "[Neptune] Failed to call Kafka API on attempt ##{attempt}: #{ex.message}"
-            raise if attempt == attempts - 1
+            logger.warn "[Neptune] Failed to call #{api} API: #{ex.message}"
+            raise if attempt == attempts - 1 && raise_on_error
           end
 
           if attempt < attempts - 1
             # Force a refresh and backoff a little bit
             reset_refresh
-            sleep(config[:retry_backoff] / 1000.0)
+            sleep(backoff / 1000.0) if backoff > 0
           end
         end
       end

@@ -36,9 +36,9 @@ module Neptune
     # @return [Boolean] true if all messages are sent successfully, otherwise false
     def process
       # Track remaining messages to be processed
-      remaining = Set.new(@messages.map {|m| m.merge(:id => m.object_id)})
+      remaining = Set.new(@messages.map {|m| m.merge(id: m.object_id)})
 
-      @cluster.retriable do
+      @cluster.retriable('Produce') do
         by_leader = messages_by_leader(remaining)
         by_leader.each do |leader, by_topic|
           # Create topic messages

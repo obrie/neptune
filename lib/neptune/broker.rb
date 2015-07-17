@@ -53,9 +53,9 @@ module Neptune
     # @return [ProduceResponse]
     def produce(topic_messages)
       request = ProduceRequest.new(
-        :required_acks => cluster.config[:required_acks],
-        :ack_timeout => cluster.config[:ack_timeout],
-        :topic_messages => topic_messages
+        required_acks: cluster.config[:required_acks],
+        ack_timeout: cluster.config[:ack_timeout],
+        topic_messages: topic_messages
       )
 
       write(request)
