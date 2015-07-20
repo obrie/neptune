@@ -32,7 +32,8 @@ module Neptune
       # @return [String]
       def self.decompress(value)
         io = StringIO.new(value)
-        Zlib::GzipReader.new(io).read
+        value = Zlib::GzipReader.new(io).read
+        value.force_encoding(Encoding::BINARY)
       end
     end
   end
