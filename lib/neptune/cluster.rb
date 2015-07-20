@@ -85,7 +85,7 @@ module Neptune
       options = {raise_on_error: true}.merge(options)
 
       # Add already-known topics
-      topic_names += topics.map(&:name)
+      topic_names += topics.values.map(&:name)
       topic_names.uniq!
 
       # Attempt a refresh on the first available broker
@@ -117,10 +117,8 @@ module Neptune
       @last_refreshed_at = nil
     end
 
-    # Send a value to a given topic
-    # @param [Hash] options The produce options
-    # @option options [Fixnum] :ack_timeout (100) The total number of playlists to get
-    # @option options [Fixnum] :required_acks (0) The number of playlists to skip when loading the list
+    # Publish a value to a given topic or raise an exception if it fails
+    # @return [Boolean]
     def produce!(topic_name, value, key = nil)
       if @batch
         @batch.add(topic_name, value, key)
@@ -130,10 +128,8 @@ module Neptune
       end
     end
 
-    # Send a value to a given topic
-    # @param [Hash] options The produce options
-    # @option options [Fixnum] :ack_timeout (100) The total number of playlists to get
-    # @option options [Fixnum] :required_acks (0) The number of playlists to skip when loading the list
+    # Publish a value to a given topic
+    # @return [Boolean]
     def produce(*args)
       produce!(*args)
     rescue APIError
