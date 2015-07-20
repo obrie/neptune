@@ -53,6 +53,7 @@ module Neptune
     # @return [Neptune::Api::Produce::Response]
     def produce(topic_requests)
       request = Api::Produce::Request.new(
+        client_id: cluster.config[:client_id],
         required_acks: cluster.config[:required_acks],
         ack_timeout: cluster.config[:ack_timeout],
         topic_requests: topic_requests
@@ -72,7 +73,10 @@ module Neptune
     # @param [Array<String>] topic_names The list of topics to fetch
     # @return [Neptune::Api::Metadata::Response]
     def metadata(topic_names)
-      request = Api::Metadata::Request.new(:topic_names => topic_names)
+      request = Api::Metadata::Request.new(
+        client_id: cluster.config[:client_id],
+        :topic_names => topic_names
+      )
       write(request)
       read(Api::Metadata::Response)
     end
