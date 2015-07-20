@@ -24,6 +24,10 @@ module Neptune
     # @return [Array<Fixnum>]
     attribute :synced_replica_ids, ArrayOf[Int32]
 
+    # The offset at the end of the log for this partition
+    # @return [Fixnum]
+    attr_accessor :highwater_mark_offset
+
     # The topic this partition belongs to
     # @return [Neptune::Cluster]
     attr_accessor :topic

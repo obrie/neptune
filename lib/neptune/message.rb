@@ -35,11 +35,21 @@ module Neptune
     # @return [String]
     attribute :value, Bytes
 
+    # The partition this message belongs to
+    # @return [Neptune::Partition]
+    attr_accessor :partition
+
     def initialize(*) #:nodoc:
       super
       @version_id ||= 0
       @offset ||= 0
       @metadata ||= 0
+    end
+
+    # The topic this message belongs to
+    # @return [Neptune::Topic]
+    def topic
+      partition && partition.topic
     end
 
     # Compresses the current message's value with the given codec

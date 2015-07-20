@@ -81,6 +81,21 @@ module Neptune
       read(Api::Metadata::Response)
     end
 
+    # Invokes the fetch API with the given topic requests
+    #
+    # @param [Array<Neptune::Api::Fetch::TopicRequest>] topic_requests Topics to fetch messages from
+    # @return [Neptune::Api::Fetch::Response]
+    def fetch(topic_requests)
+      request = Api::Fetch::Request.new(
+        client_id: cluster.config[:client_id],
+        max_wait_time: cluster.config[:max_wait_time],
+        min_bytes: cluster.config[:min_bytes],
+        topic_requests: topic_requests
+      )
+      write(request)
+      read(Api::Fetch::Response)
+    end
+
     # Close any open connections to the broker
     # @return [Boolean] true, always
     def close

@@ -3,6 +3,7 @@ require 'neptune/broker'
 require 'neptune/config'
 require 'neptune/loggable'
 require 'neptune/topic'
+require 'neptune/api/fetch'
 
 module Neptune
   # A group of brokers
@@ -153,6 +154,50 @@ module Neptune
           @batch = nil
         end
       end
+    end
+
+    # Fetch messages from the given topic / partition or raise an exception if it fails
+    # @return [Array<Netpune::Message>]
+    def fetch!(topic_name, partition_id, offset)
+      topic = topic!(topic_name)
+      partition = topic.partition!(partition_id)
+
+      requests = [Api::Fetch::TopicRequest.new(
+        topic_name: topic.name,
+        partition_requests: [Api::Fetch::PartitionRequest.new(
+          partition_id: partition.id,
+          offset: offset,
+          max_bytes: config[:max_bytes]
+        )]
+      )]
+
+      response = partition.leader.fetch(requests)
+      if response.success?
+        # Update highwater mark offsets for each partition
+        response.topic_responses.each do |topic_response|
+          topic = topic!(topic_response.topic_name)
+          topic_response.partition_responses.each do |partition_response|
+            partition = topic.partition!(partition_response.partition_id)
+            partition.highwater_mark_offset = partition_response.highwater_mark_offset
+          end
+        end
+
+        # Associate partitions with messages
+        messages = response.messages
+        messages.each {|message| message.partition = partition}
+
+        messages
+      else
+        raise(APIError.new(response.error_code))
+      end
+    end
+
+    # Fetch messages from the given topic / partition
+    # @return [Array<Netpune::Message>]
+    def fetch(*args)
+      fetch!(*args)
+    rescue APIError
+      []
     end
 
     # Closes all open connections to brokers
