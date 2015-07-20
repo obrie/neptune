@@ -41,7 +41,7 @@ module Neptune
       @cluster.retriable('Produce') do
         by_leader = messages_by_leader(remaining)
         by_leader.each do |leader, by_topic|
-          # Create topic messages
+          # Create topic requests
           topic_requests = by_topic.map {|topic, by_partition| build_topic_request(topic, by_partition)}
 
           # Send the request

@@ -47,7 +47,7 @@ module Neptune
       self.port = port
     end
 
-    # Invokes the produce API with the given topic messages
+    # Invokes the produce API with the given topic requests
     #
     # @param [Array<Neptune::Api::Produce::TopicRequest>] topic_requests Messages to send for each topic
     # @return [Neptune::Api::Produce::Response]
