@@ -1,7 +1,7 @@
 require 'set'
+require 'neptune/api/produce/partition_request'
+require 'neptune/api/produce/topic_request'
 require 'neptune/message'
-require 'neptune/partition_message'
-require 'neptune/topic_message'
 
 module Neptune
   # Tracks a batch of messages to produce
@@ -42,10 +42,10 @@ module Neptune
         by_leader = messages_by_leader(remaining)
         by_leader.each do |leader, by_topic|
           # Create topic messages
-          topic_messages = by_topic.map {|topic, by_partition| build_topic_message(topic, by_partition)}
+          topic_requests = by_topic.map {|topic, by_partition| build_topic_request(topic, by_partition)}
 
           # Send the request
-          response = leader.produce(topic_messages)
+          response = leader.produce(topic_requests)
 
           if response.success?
             # Remove all messages that were just published
@@ -102,20 +102,20 @@ module Neptune
       by_leader
     end
 
-    # Builds a +TopicMessage+ based on a topic and set of messages grouped by partition
-    # @return [Array<Neptune::TopicMessage]
-    def build_topic_message(topic, by_partition)
-      TopicMessage.new(
+    # Builds a +ProduceTopicRequest+ based on a topic and set of messages grouped by partition
+    # @return [Array<Neptune::ProduceTopicRequest]
+    def build_topic_request(topic, by_partition)
+      Api::Produce::TopicRequest.new(
         topic_name: topic.name,
-        partition_messages: by_partition.map do |partition, messages|
-          partition_message = PartitionMessage.new(
+        partition_requests: by_partition.map do |partition, messages|
+          partition_request = Api::Produce::PartitionRequest.new(
             partition_id: partition.id,
             messages: messages.map do |message|
               Message.new(key: message[:key], value: message[:value])
             end
           )
-          partition_message.compress(topic.compression_codec) if topic.compressed?
-          partition_message
+          partition_request.compress(topic.compression_codec) if topic.compressed?
+          partition_request
         end
       )
     end

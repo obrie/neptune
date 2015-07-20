@@ -49,32 +49,32 @@ module Neptune
 
     # Invokes the produce API with the given topic messages
     #
-    # @param [Array<Neptune::TopicMessage>] topic_messages Messages to send
-    # @return [ProduceResponse]
-    def produce(topic_messages)
-      request = ProduceRequest.new(
+    # @param [Array<Neptune::Api::Produce::TopicRequest>] topic_requests Messages to send for each topic
+    # @return [Neptune::Api::Produce::Response]
+    def produce(topic_requests)
+      request = Api::Produce::Request.new(
         required_acks: cluster.config[:required_acks],
         ack_timeout: cluster.config[:ack_timeout],
-        topic_messages: topic_messages
+        topic_requests: topic_requests
       )
 
       write(request)
 
       if request.required_acks != 0
-        read(ProduceResponse)
+        read(Api::Produce::Response)
       else
-        ProduceResponse.new
+        Api::Produce::Response.new
       end
     end
 
     # Fetch metadata for the given topics
     #
     # @param [Array<String>] topic_names The list of topics to fetch
-    # @return [MetadataResponse]
+    # @return [Neptune::Api::Metadata::Response]
     def metadata(topic_names)
-      request = MetadataRequest.new(:topic_names => topic_names)
+      request = Api::Metadata::Request.new(:topic_names => topic_names)
       write(request)
-      read(MetadataResponse)
+      read(Api::Metadata::Response)
     end
 
     # Close any open connections to the broker
@@ -110,5 +110,5 @@ module Neptune
   end
 end
 
-require 'neptune/apis/metadata'
-require 'neptune/apis/produce'
+require 'neptune/api/metadata'
+require 'neptune/api/produce'
