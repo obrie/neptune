@@ -1,4 +1,5 @@
 require 'neptune/compression'
+require 'neptune/errors'
 require 'neptune/partition'
 require 'neptune/resource'
 
@@ -56,6 +57,12 @@ module Neptune
     # @return [Neptune::Partition]
     def partition(id)
       partitions.detect {|partition| partition.id == id}
+    end
+
+    # Looks up the partition with the given id or raises an error if it doesn't exist
+    # @return [Neptune::Partition]
+    def partition!(id)
+      partition(id) || raise(InvalidPartitionError.new("Partition #{id} is invalid for topic #{name}"))
     end
 
     # Looks up the partitions that are currently available for access
