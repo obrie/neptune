@@ -14,7 +14,7 @@ module Neptune
     attr_reader :error_code
 
     def initialize(error_code, *args) #:nodoc:
-      super("Received error from server: #{error_code}", *args)
+      super("Received error from server: #{error_code.name} (#{error_code.id})", *args)
     end
   end
 
