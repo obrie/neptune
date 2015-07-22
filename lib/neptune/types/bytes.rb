@@ -18,11 +18,7 @@ module Neptune
       # @return [Array<Byte>]
       def self.from_kafka(buffer)
         length = Int32.from_kafka(buffer)
-        if length == -1
-          nil
-        else
-          buffer.read(length)
-        end
+        length == -1 ? nil : buffer.read(length)
       end
     end
   end

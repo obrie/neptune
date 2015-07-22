@@ -18,7 +18,7 @@ module Neptune
       # @return [String]
       def self.from_kafka(buffer)
         length = Int16.from_kafka(buffer)
-        buffer.read(length)
+        length == -1 ? nil : buffer.read(length)
       end
     end
   end
