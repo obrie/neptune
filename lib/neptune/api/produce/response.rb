@@ -30,7 +30,7 @@ module Neptune
         # Whether the error, if any, is retrable in this partition
         # @return [Boolean]
         def retriable?
-          error_code.is?(:leader_not_available, :not_leader_for_partition)
+          error_code.retriable?
         end
       end
     end

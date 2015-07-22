@@ -17,18 +17,6 @@ module Neptune
           @responses ||= []
         end
 
-        # Whether all messages were successfully produced
-        # @return [Boolean]
-        def success?
-          responses.all? {|response| response.success?}
-        end
-
-        # The first available error in the response
-        # @return [Fixnum]
-        def error_code
-          responses.map(&:error_code).compact.first
-        end
-
         # Iterates over the underlying responses
         def each(&block)
           responses.each(&block)

@@ -35,6 +35,12 @@ module Neptune
       new(Types::Int16.from_kafka(buffer))
     end
 
+    # Looks up the error code associated with the given name
+    # @return [Neptune::ErrorCode]
+    def self.find_by_name(name)
+      new(NAMES_BY_VALUE.key(name))
+    end
+
     # The numeric id
     # @return[Fixnum]
     attr_reader :id
@@ -53,6 +59,12 @@ module Neptune
     # @return [String]
     def name
       NAMES_BY_VALUE[id]
+    end
+
+    # Whether this error is retriable
+    # @return [Boolean]
+    def retriable?
+      is?(:leader_not_available, :not_leader_for_partition)
     end
 
     # Determines whether this error is equal to another based on their id.
