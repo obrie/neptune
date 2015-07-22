@@ -4,8 +4,7 @@ module Neptune
   module Loggable
     private
     # Delegates access to the logger to Neptune.logger
-    # 
-    # @return [Logger] The logger configured for this library
+    # @return [Logger]
     def logger
       Neptune.logger
     end

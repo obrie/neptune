@@ -24,7 +24,7 @@ module Neptune
         # Whether the produce was successful in this partition
         # @return [Boolean]
         def success?
-          error_code == :no_error
+          error_code.success?
         end
 
         # Whether the error, if any, is retrable in this partition

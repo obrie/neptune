@@ -88,5 +88,10 @@ module Neptune
     def decompressed_value
       compression_codec.decompress(value)
     end
+
+    private
+    def pretty_print_ignore #:nodoc:
+      [:'@partition']
+    end
   end
 end

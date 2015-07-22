@@ -24,13 +24,13 @@ module Neptune
     # @return [Array<Fixnum>]
     attribute :synced_replica_ids, ArrayOf[Int32]
 
-    # The offset at the end of the log for this partition
-    # @return [Fixnum]
-    attr_accessor :highwater_mark_offset
-
     # The topic this partition belongs to
     # @return [Neptune::Cluster]
     attr_accessor :topic
+
+    # The offset at the end of the log for this partition
+    # @return [Fixnum]
+    attr_accessor :highwater_mark_offset
 
     # The broker currently acting as leader
     # @return [Neptune::Broker]
@@ -53,7 +53,7 @@ module Neptune
     # Whether the partition is available for access
     # @return [Boolean]
     def available?
-      error_code.is?(:no_error, :replica_not_available)
+      error_code.success? || error_code == :replica_not_available
     end
 
     private

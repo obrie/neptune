@@ -28,7 +28,7 @@ module Neptune
         # Whether the fetch was successful for this partition
         # @return [Boolean]
         def success?
-          error_code == :no_error
+          error_code.success?
         end
 
         # Sets the underlying messages associated with this partition, decompressing

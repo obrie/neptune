@@ -23,7 +23,7 @@ module Neptune
       end
     end
 
-    @codecs_by_name = {}
+    @codecs_by_name = {:none => nil}
     @codecs_by_id = {}
 
     register(Gzip)

@@ -61,6 +61,12 @@ module Neptune
       NAMES_BY_VALUE[id]
     end
 
+    # Whether this is a successful code
+    # @return [Boolean]
+    def success?
+      name == :no_error
+    end
+
     # Whether this error is retriable
     # @return [Boolean]
     def retriable?

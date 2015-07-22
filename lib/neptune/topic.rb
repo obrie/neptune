@@ -44,7 +44,7 @@ module Neptune
     # Whether this topic exists in the cluster
     # @return [Boolean]
     def exists?
-      error_code == :no_error
+      error_code.success?
     end
 
     # Whether a leader is available for this topic
@@ -68,7 +68,7 @@ module Neptune
     # Looks up the partitions that are currently available for access
     # @return [Array<Neptune::Partition>]
     def available_partitions
-      partitions.select {|partition| partition.available?}
+      partitions.select(&:available?)
     end
 
     # Determines the partition for the given key
@@ -78,7 +78,7 @@ module Neptune
         if key
           # Use the configured partitioner
           partition_id = cluster.config.partitioner.call(key, partitions.count)
-          partition(partition_id) || raise(InvalidPartitionError.new("Partition #{partition_id} is invalid for Topic #{name}"))
+          partition!(partition_id)
         elsif available_partitions.any?
           # Round-robin between partitions
           available_partitions[next_partition_counter % available_partitions.count]

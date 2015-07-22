@@ -92,6 +92,7 @@ module Neptune
         partitioner: lambda {|key, partition_count| Zlib::crc32(key) % partition_count},
         refresh_interval: 600_000,
         compressed_topics: [],
+        compression_codec: :none,
 
         # Consumer configurations
         max_wait_time: 100,
