@@ -24,14 +24,14 @@ module Neptune
 
       # Converts the given value to its Kafka format
       # @return [String]
-      def to_kafka(values, *)
+      def to_kafka(values, *args)
         buffer = Buffer.new
 
         # Add size of array
         buffer.concat(Int32.to_kafka(values.size))
 
         # Add individual elements
-        values.each {|value| buffer.concat(type.to_kafka(value))}
+        values.each {|value| buffer.concat(type.to_kafka(value, *args))}
 
         buffer.to_s
       end

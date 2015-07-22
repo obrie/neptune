@@ -162,33 +162,29 @@ module Neptune
       topic = topic!(topic_name)
       partition = topic.partition!(partition_id)
 
-      requests = [Api::Fetch::TopicRequest.new(
+      requests = [Api::Fetch::Request.new(
         topic_name: topic.name,
-        partition_requests: [Api::Fetch::PartitionRequest.new(
-          partition_id: partition.id,
-          offset: offset,
-          max_bytes: config[:max_bytes]
-        )]
+        partition_id: partition.id,
+        offset: offset,
+        max_bytes: config[:max_bytes]
       )]
 
-      response = partition.leader.fetch(requests)
-      if response.success?
+      responses = partition.leader.fetch(requests)
+      if responses.success?
         # Update highwater mark offsets for each partition
-        response.topic_responses.each do |topic_response|
-          topic = topic!(topic_response.topic_name)
-          topic_response.partition_responses.each do |partition_response|
-            partition = topic.partition!(partition_response.partition_id)
-            partition.highwater_mark_offset = partition_response.highwater_mark_offset
-          end
+        responses.each do |response|
+          topic = topic!(response.topic_name)
+          partition = topic.partition!(response.partition_id)
+          partition.highwater_mark_offset = response.highwater_mark_offset
         end
 
         # Associate partitions with messages
-        messages = response.messages
+        messages = responses.messages
         messages.each {|message| message.partition = partition}
 
         messages
       else
-        raise(APIError.new(response.error_code))
+        raise(APIError.new(responses.error_code))
       end
     end
 

@@ -60,7 +60,7 @@ module Neptune
 
       # Converts the given value to its Kafka format
       # @return [String]
-      def to_kafka(resource)
+      def to_kafka(resource, *)
         buffer = Buffer.new
 
         # Process in reverse order so that the buffer has all the necessary data

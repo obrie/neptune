@@ -1,6 +1,8 @@
 require 'neptune/types/array'
 require 'neptune/types/bytes'
 require 'neptune/types/checksum'
+require 'neptune/types/index'
+require 'neptune/types/indexed_array'
 require 'neptune/types/int16'
 require 'neptune/types/int32'
 require 'neptune/types/int64'

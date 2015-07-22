@@ -49,22 +49,22 @@ module Neptune
 
     # Invokes the produce API with the given topic requests
     #
-    # @param [Array<Neptune::Api::Produce::TopicRequest>] topic_requests Messages to send for each topic
-    # @return [Neptune::Api::Produce::Response]
-    def produce(topic_requests)
-      request = Api::Produce::Request.new(
+    # @param [Array<String, Neptune::Api::Produce::Request>] requests Messages to send for each topic/partition
+    # @return [Neptune::Api::Produce::BatchResponse]
+    def produce(requests)
+      request = Api::Produce::BatchRequest.new(
         client_id: cluster.config[:client_id],
         required_acks: cluster.config[:required_acks],
         ack_timeout: cluster.config[:ack_timeout],
-        topic_requests: topic_requests
+        requests: requests
       )
 
       write(request)
 
       if request.required_acks != 0
-        read(Api::Produce::Response)
+        read(Api::Produce::BatchResponse)
       else
-        Api::Produce::Response.new
+        Api::Produce::BatchResponse.new
       end
     end
 
@@ -75,7 +75,7 @@ module Neptune
     def metadata(topic_names)
       request = Api::Metadata::Request.new(
         client_id: cluster.config[:client_id],
-        :topic_names => topic_names
+        topic_names: topic_names
       )
       write(request)
       read(Api::Metadata::Response)
@@ -83,17 +83,17 @@ module Neptune
 
     # Invokes the fetch API with the given topic requests
     #
-    # @param [Array<Neptune::Api::Fetch::TopicRequest>] topic_requests Topics to fetch messages from
-    # @return [Neptune::Api::Fetch::Response]
-    def fetch(topic_requests)
-      request = Api::Fetch::Request.new(
+    # @param [Array<Neptune::Api::Fetch::Request>] requests Topics/partitions to fetch messages from
+    # @return [Neptune::Api::Fetch::BatchResponse]
+    def fetch(requests)
+      request = Api::Fetch::BatchRequest.new(
         client_id: cluster.config[:client_id],
         max_wait_time: cluster.config[:max_wait_time],
         min_bytes: cluster.config[:min_bytes],
-        topic_requests: topic_requests
+        requests: requests
       )
       write(request)
-      read(Api::Fetch::Response)
+      read(Api::Fetch::BatchResponse)
     end
 
     # Close any open connections to the broker

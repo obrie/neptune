@@ -1,33 +1,24 @@
-require 'neptune/request'
-require 'neptune/api/fetch/topic_request'
+require 'neptune/resource'
 
 module Neptune
   module Api
     module Fetch
-      class Request < Neptune::Request
-        # The node id of the replica initiating this request.  Always -1.
+      class Request < Resource
+        # The topic to fetch from
+        # @return [String]
+        attribute :topic_name, Index[String]
+
+        # The partition to fetch from
         # @return [Fixnum]
-        attribute :replica_id, Int32
+        attribute :partition_id, Int32
 
-        # The maximum amount of time to block waiting if insufficient data is
-        # available at the time the request is issued
+        # The offset to begin from
         # @return [Fixnum]
-        attribute :max_wait_time, Int32
+        attribute :offset, Int64
 
-        # The minimum number of bytes of messages that must be available to give a
-        # response. If set to 0, the server will always respond immediately.
+        # The maximum bytes to include in messages for this partition
         # @return [Fixnum]
-        attribute :min_bytes, Int32
-
-        # Requests by topic
-        # @return [Array<Neptune::Api::Fetch::TopicRequest>]
-        attribute :topic_requests, ArrayOf[TopicRequest]
-
-        def initialize(*) #:nodoc:
-          super
-          self.api_key = 1
-          self.replica_id = -1
-        end
+        attribute :max_bytes, Int32
       end
     end
   end

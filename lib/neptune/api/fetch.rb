@@ -1,2 +1,2 @@
-require 'neptune/api/fetch/request'
-require 'neptune/api/fetch/response'
+require 'neptune/api/fetch/batch_request'
+require 'neptune/api/fetch/batch_response'

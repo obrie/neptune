@@ -1,35 +1,70 @@
-require 'neptune/response'
-require 'neptune/api/fetch/topic_response'
+require 'neptune/message'
+require 'neptune/resource'
 
 module Neptune
   module Api
     module Fetch
-      class Response < Neptune::Response
-        # Responses for each topic within the cluster
-        # @return [Array<Neptune::Api::Fetch::TopicResponse>]
-        attribute :topic_responses, ArrayOf[TopicResponse]
+      class Response < Resource
+        # The partition this result corresponds to
+        # @return [String]
+        attribute :topic_name, Index[String]
 
-        def initialize(*) #:nodoc:
-          super
-          @topic_responses ||= []
-        end
+        # The partition this result corresponds to
+        # @return [Fixnum]
+        attribute :partition_id, Int32
 
-        # Whether all messages were successfully produced
+        # The error from this partition
+        # @return [Neptune::ErrorCode]
+        attribute :error_code, ErrorCode
+
+        # The offset at the end of the log for this partition
+        # @return [Fixnum]
+        attribute :highwater_mark_offset, Int64
+
+        # The messages fetched
+        # @return [Array<Neptune::Message>]
+        attribute :messages, SizeBoundArrayOf[Message]
+
+        # Whether the fetch was successful for this partition
         # @return [Boolean]
         def success?
-          topic_responses.all? {|response| response.success?}
+          error_code == :no_error
         end
 
-        # The first available error in the response
-        # @return [Fixnum]
-        def error_code
-          topic_responses.map(&:error_code).compact.first
+        # Sets the underlying messages associated with this partition, decompressing
+        # any that might have been previously compressed.
+        def messages=(messages)
+          @messages = messages
+          decompress if compressed?
         end
 
-        # Messages for the requested topics / partitions
-        # @return [Array<Neptune::Message>]
-        def messages
-          topic_responses.map {|response| response.partition_responses.map(&:messages)}.flatten
+        private
+        # Whether any of the underlying messages are compressed
+        # @return [Boolean]
+        def compressed?
+          messages.any?(&:compressed?)
+        end
+
+        # Decompresses the current messages
+        # @return [Boolean] true, always
+        def decompress
+          type = self.class.attributes[:messages]
+          decompressed_messages = []
+
+          messages.each do |message|
+            if message.compressed?
+              # Inflate the underlying messages
+              buffer = Buffer.new(message.decompressed_value)
+              buffer.prepend(Types::Size.to_kafka(nil, buffer))
+              decompressed_messages.concat(type.from_kafka(buffer))
+            else
+              decompressed_messages << message
+            end
+          end
+
+          self.messages = decompressed_messages
+
+          true
         end
       end
     end

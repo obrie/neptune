@@ -1,27 +1,37 @@
-require 'neptune/request'
-require 'neptune/api/produce/topic_request'
+require 'neptune/message'
+require 'neptune/resource'
 
 module Neptune
   module Api
     module Produce
-      class Request < Neptune::Request
-        # How many acknowledgements the servers should receive before responding to
-        # the request
+      class Request < Resource
+        # The topic this message belongs to
+        # @return [String]
+        attribute :topic_name, Index[String]
+
+        # The partition this message belongs to
         # @return [Fixnum]
-        attribute :required_acks, Int16
+        attribute :partition_id, Int32
 
-        # Maximum time, in milliseconds, the server can await the receipt of the
-        # number of required acknowledgements
-        # @return [Fixnum]
-        attribute :ack_timeout, Int32
+        # The messages to produce
+        # @return [Array<Neptune::Message>]
+        attribute :messages, SizeBoundArrayOf[Message]
 
-        # The messages to send
-        # @return [Array<Neptune::Api::Produce::TopicRequest>]
-        attribute :topic_requests, ArrayOf[TopicRequest]
+        # Compresses the individual messages with the given codec
+        # @return [Boolean] true, always
+        def compress(codec)
+          buffer = Buffer.new(read_kafka_attribute(:messages))
 
-        def initialize(*) #:nodoc:
-          super
-          self.api_key = 0
+          # Remove the size from the buffer since it'll get replaced by the new
+          # messages size attribute
+          Types::Int32.from_kafka(buffer)
+
+          # Replace with a compressed message
+          message = Message.new(value: buffer.read)
+          message.compress(codec)
+          @messages = [message]
+
+          true
         end
       end
     end

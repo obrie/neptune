@@ -1,29 +1,36 @@
-require 'neptune/response'
-require 'neptune/api/produce/topic_response'
+require 'neptune/resource'
 
 module Neptune
   module Api
     module Produce
-      class Response < Neptune::Response
-        # Responses for each topic within the cluster
-        # @return [Array<Neptune::Api::Produce::TopicResponse>]
-        attribute :topic_responses, ArrayOf[TopicResponse]
+      class Response < Resource
+        # The topic this result corresponds to
+        # @return [String]
+        attribute :topic_name, Index[String]
 
-        def initialize(*) #:nodoc:
-          super
-          @topic_responses ||= []
-        end
+        # The partition this result corresponds to
+        # @return [Fixnum]
+        attribute :partition_id, Int32
 
-        # Whether all messages were successfully produced
+        # The error from this partition
+        # @return [Neptune::ErrorCode]
+        attribute :error_code, ErrorCode
+
+        # The offset assigned to the first message in the message set appended to
+        # this partition
+        # @return [Fixnum]
+        attribute :offset, Int64
+
+        # Whether the produce was successful in this partition
         # @return [Boolean]
         def success?
-          topic_responses.all? {|response| response.success?}
+          error_code == :no_error
         end
 
-        # The first available error in the response
-        # @return [Fixnum]
-        def error_code
-          topic_responses.map(&:error_code).compact.first
+        # Whether the error, if any, is retrable in this partition
+        # @return [Boolean]
+        def retriable?
+          error_code.is?(:leader_not_available, :not_leader_for_partition)
         end
       end
     end

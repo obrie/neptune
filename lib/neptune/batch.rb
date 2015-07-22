@@ -1,6 +1,5 @@
 require 'set'
-require 'neptune/api/produce/partition_request'
-require 'neptune/api/produce/topic_request'
+require 'neptune/api/produce/request'
 require 'neptune/message'
 
 module Neptune
@@ -41,29 +40,27 @@ module Neptune
       @cluster.retriable('Produce') do
         by_leader = messages_by_leader(remaining)
         by_leader.each do |leader, by_topic|
-          # Create topic requests
-          topic_requests = by_topic.map {|topic, by_partition| build_topic_request(topic, by_partition)}
+          # Create requests
+          requests = build_requests(by_topic)
 
           # Send the request
-          response = leader.produce(topic_requests)
+          responses = leader.produce(requests)
 
-          if response.success?
+          if responses.success?
             # Remove all messages that were just published
             messages = by_topic.values.map(&:values).flatten
             remaining.subtract(messages)
           else
             # Remove individual messages that were successful or failed
-            response.topic_responses.each do |topic_response|
-              topic_response.partition_responses.each do |partition_response|
-                messages = by_topic[topic_response.topic_name][partition_response.partition_id]
+            responses.each do |response|
+              messages = by_topic[response.topic_name][response.partition_id]
 
-                # Track successful / failed messages
-                if partition_response.success? || !partition_response.retriable?
-                  remaining.subtract(messages)
-                  failed_messages.concat(messages) unless partition_response.retriable?
-                end
-                @last_error_code = partition_response.error_code unless partition_response.success?
+              # Track successful / failed messages
+              if response.success? || !response.retriable?
+                remaining.subtract(messages)
+                failed_messages.concat(messages) unless response.retriable?
               end
+              @last_error_code = response.error_code unless response.success?
             end
           end
         end
@@ -102,22 +99,27 @@ module Neptune
       by_leader
     end
 
-    # Builds a +ProduceTopicRequest+ based on a topic and set of messages grouped by partition
-    # @return [Array<Neptune::ProduceTopicRequest]
-    def build_topic_request(topic, by_partition)
-      Api::Produce::TopicRequest.new(
-        topic_name: topic.name,
-        partition_requests: by_partition.map do |partition, messages|
-          partition_request = Api::Produce::PartitionRequest.new(
+    # Builds a set of requests based on a topic and set of messages grouped by
+    # partition
+    # @return [Array<Neptune::Api::Produce::Request>]
+    def build_requests(by_topic)
+      requests = []
+
+      by_topic.each do |topic, by_partition|
+        by_partition.each do |partition, messages|
+          request = Api::Produce::Request.new(
+            topic_name: topic.name,
             partition_id: partition.id,
             messages: messages.map do |message|
               Message.new(key: message[:key], value: message[:value])
             end
           )
-          partition_request.compress(topic.compression_codec) if topic.compressed?
-          partition_request
+          request.compress(topic.compression_codec) if topic.compressed?
+          requests << request
         end
-      )
+      end
+
+      requests
     end
   end
 end
