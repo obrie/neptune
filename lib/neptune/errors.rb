@@ -1,10 +1,11 @@
 module Neptune
   class Error < StandardError
-    attr_reader :inner_exception
+    attr_reader :cause
 
-    def initialize(message = nil, inner_exception = nil) #:nodoc:
+    def initialize(message = nil, cause = $!) #:nodoc:
       super(message)
-      @inner_exception = inner_exception
+      @cause = cause
+      set_backtrace(cause.backtrace) if cause
     end
   end
 

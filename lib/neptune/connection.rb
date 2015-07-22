@@ -70,7 +70,7 @@ module Neptune
         end
       rescue SystemCallError => ex
         close
-        raise ConnectionError.new("#{ex.class}: #{ex.message}", ex)
+        raise ConnectionError.new("#{ex.class}: #{ex.message}")
       end
 
       true
@@ -84,7 +84,7 @@ module Neptune
       Buffer.new(read_bytes(length))
     rescue SystemCallError, IOError => ex
       close
-      raise ConnectionError.new("#{ex.class}: #{ex.message}", ex)
+      raise ConnectionError.new("#{ex.class}: #{ex.message}")
     end
 
     # Writes the given data to the socket.
@@ -101,7 +101,7 @@ module Neptune
         end
       rescue SystemCallError => ex
         close
-        raise ConnectionError.new("#{ex.class}: #{ex.message}", ex)
+        raise ConnectionError.new("#{ex.class}: #{ex.message}")
       end
 
       true
