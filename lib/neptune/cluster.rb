@@ -159,32 +159,34 @@ module Neptune
     # Fetch messages from the given topic / partition or raise an exception if it fails
     # @return [Array<Netpune::Message>]
     def fetch!(topic_name, partition_id, offset)
-      topic = topic!(topic_name)
-      partition = topic.partition!(partition_id)
+      retriable('Fetch') do
+        topic = topic!(topic_name)
+        partition = topic.partition!(partition_id)
 
-      requests = [Api::Fetch::Request.new(
-        topic_name: topic.name,
-        partition_id: partition.id,
-        offset: offset,
-        max_bytes: config[:max_bytes]
-      )]
+        requests = [Api::Fetch::Request.new(
+          topic_name: topic.name,
+          partition_id: partition.id,
+          offset: offset,
+          max_bytes: config[:max_bytes]
+        )]
 
-      responses = partition.leader.fetch(requests)
-      if responses.success?
-        # Update highwater mark offsets for each partition
-        responses.each do |response|
-          topic = topic!(response.topic_name)
-          partition = topic.partition!(response.partition_id)
-          partition.highwater_mark_offset = response.highwater_mark_offset
+        responses = partition.leader.fetch(requests)
+        if responses.success?
+          # Update highwater mark offsets for each partition
+          responses.each do |response|
+            topic = topic!(response.topic_name)
+            partition = topic.partition!(response.partition_id)
+            partition.highwater_mark_offset = response.highwater_mark_offset
+          end
+
+          # Associate partitions with messages
+          messages = responses.messages
+          messages.each {|message| message.partition = partition}
+
+          messages
+        else
+          raise(APIError.new(responses.error_code))
         end
-
-        # Associate partitions with messages
-        messages = responses.messages
-        messages.each {|message| message.partition = partition}
-
-        messages
-      else
-        raise(APIError.new(responses.error_code))
       end
     end
 
