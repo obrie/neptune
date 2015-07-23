@@ -10,9 +10,9 @@ module Neptune
       # Converts the given value to its Kafka format
       # @return [String]
       def self.to_kafka(value, buffer)
-        result = Int32.to_kafka(Zlib.crc32(buffer.peek(buffer.size)))
+        checksum = Zlib.crc32(buffer.peek(buffer.size))
+        result = Int32.to_kafka(checksum)
         result.prepend(Int32.to_kafka(buffer.size + result.size))
-        result
       end
 
       # Converts from the Kafka data in the current buffer's position
