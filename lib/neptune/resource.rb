@@ -1,3 +1,4 @@
+require 'forwardable'
 require 'pp'
 require 'neptune/errors'
 require 'neptune/error_code'
@@ -98,6 +99,8 @@ module Neptune
         end
       end
     end
+
+    extend Forwardable
 
     # Initializes this resources with the given attributes.  This will continue
     # to call the superclass's constructor with any additional arguments that

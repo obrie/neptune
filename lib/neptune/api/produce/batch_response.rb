@@ -17,10 +17,7 @@ module Neptune
           @responses ||= []
         end
 
-        # Iterates over the underlying responses
-        def each(&block)
-          responses.each(&block)
-        end
+        delegate :each => :responses
       end
     end
   end

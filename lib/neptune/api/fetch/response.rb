@@ -25,11 +25,7 @@ module Neptune
         # @return [Array<Neptune::Message>]
         attribute :messages, SizeBoundArrayOf[Message]
 
-        # Whether the fetch was successful for this partition
-        # @return [Boolean]
-        def success?
-          error_code.success?
-        end
+        delegate [:success?, :retriable?] => :error_code
 
         # Sets the underlying messages associated with this partition, decompressing
         # any that might have been previously compressed.

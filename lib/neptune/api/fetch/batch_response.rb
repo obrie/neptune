@@ -17,15 +17,12 @@ module Neptune
           @responses ||= {}
         end
 
+        delegate :each => :responses
+
         # Messages for the requested topics / partitions
         # @return [Array<Neptune::Message>]
         def messages
           responses.map(&:messages).flatten
-        end
-
-        # Iterates over the underlying responses
-        def each(&block)
-          responses.each(&block)
         end
       end
     end
