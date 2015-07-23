@@ -20,15 +20,15 @@ module Neptune
       end
 
       # Converts the given value to its Kafka format
-      # @return [String]
+      # @return [String] Always an empty string
       def to_kafka(*args)
         ''
       end
 
       # Converts from the Kafka data in the current buffer's position
-      # @return [Array]
+      # @return Always nil
       def from_kafka(*args)
-        ''
+        nil
       end
     end
   end
