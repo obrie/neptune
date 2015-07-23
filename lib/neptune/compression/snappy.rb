@@ -22,23 +22,24 @@ module Neptune
       end
       @enabled = true
 
+      # Whether this compression scheme is enabled
+      # @return [Boolean]
+      def self.enabled?
+        @enabled
+      end
+
       # Compresses the given value
       # @return [String]
       def self.compress(value)
-        check!
+        raise EncodingError.new('Snappy compression library unavailable') unless enabled?
         ::Snappy.deflate(value)
       end
 
       # Decompresses the given value
       # @return [String]
       def self.decompress(value)
-        check!
+        raise DecodingError.new('Snappy compression library unavailable') unless enabled?
         ::Snappy::Reader.new(StringIO.new(value)).read
-      end
-
-      private
-      def self.check! #:nodoc:
-        raise Error.new('Snappy compression library unavailable')
       end
     end
   end
