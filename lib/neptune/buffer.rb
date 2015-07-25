@@ -1,35 +1,35 @@
 module Neptune
-  # Represents binary strings
+  # Represents Kafka-encoded data
   class Buffer
-    def initialize(str = '') #:nodoc:
-      @str = str.encode(Encoding::BINARY)
+    def initialize(data = '') #:nodoc:
+      @data = data.encode(Encoding::BINARY)
       @pos = 0
     end
 
     # Adds the given value to the end of the buffer
     # @return [Neptune::Buffer]
     def concat(value)
-      @str.concat(value.dup.force_encoding(Encoding::BINARY))
+      @data.concat(value.dup.force_encoding(Encoding::BINARY))
       self
     end
 
     # Adds the given value to the beginning of the buffer
     # @return [Neptune::Buffer]
     def prepend(value)
-      @str.prepend(value.dup.force_encoding(Encoding::BINARY))
+      @data.prepend(value.dup.force_encoding(Encoding::BINARY))
       self
     end
 
     # The current length of the buffer
     # @return [Fixnum]
     def size
-      @str.bytesize
+      @data.bytesize
     end
 
     # Retrieves the given number of bytes, moving the current position
     # @return [String]
     def read(length = bytes_remaining)
-      value = @str.byteslice(@pos, length)
+      value = @data.byteslice(@pos, length)
       @pos += length
       value
     end
@@ -37,25 +37,25 @@ module Neptune
     # Retrieves the given number of bytes without moving the current position
     # @return [String]
     def peek(length)
-      @str.byteslice(@pos, length)
+      @data.byteslice(@pos, length)
     end
 
     # The number of bytes remaining in the buffer
     # @return [Fixnum]
     def bytes_remaining
-      @str.bytesize - @pos
+      @data.bytesize - @pos
     end
 
     # Determines whether we've reached the end of the buffer
     # @return [Boolean]
     def eof?
-      @pos == @str.bytesize
+      @pos == @data.bytesize
     end
 
     # Generates a string representation of this buffer
     # @return [String]
     def to_s
-      @str
+      @data
     end
   end
 end
