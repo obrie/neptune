@@ -1,8 +1,8 @@
 require 'neptune/batch'
-require 'neptune/broker'
+require 'neptune/broker_collection'
 require 'neptune/config'
 require 'neptune/loggable'
-require 'neptune/topic'
+require 'neptune/topic_collection'
 require 'neptune/api/fetch'
 
 module Neptune
@@ -11,16 +11,12 @@ module Neptune
     include Loggable
 
     # List of brokers known to the cluster
-    # @return [Hash<String, Neptune::Broker>]
+    # @return [Neptune::BrokerCollection]
     attr_reader :brokers
 
     # Known topics in the cluster
-    # @return [Hash<String, Neptune::Topic>]
+    # @return [Neptune::TopicCollection]
     attr_reader :topics
-
-    # The pool of open connections
-    # @return [Array<Neptune::Connection>]
-    attr_reader :connections
 
     # The time at which the metadata for this cluster was last refreshed
     # @return [Time]
@@ -32,18 +28,12 @@ module Neptune
 
     # Creates a new Kafka cluster with the given seed brokers.
     def initialize(brokers = ['localhost:9092'], config = {})
-      @brokers = {}
-      @topics = {}
+      @brokers = BrokerCollection.new(self)
+      @topics = TopicCollection.new(self)
       @config = Config.new(config)
-      @connections = Hash.new do |connections, uri|
-        host, port = uri.split(':')
-        connections[uri] = Connection.new(host, port, @config)
-      end
 
       # Add seed brokers
-      brokers.each do |uri|
-        self.brokers[uri] = Broker.new(uri: uri, cluster: self)
-      end
+      brokers.each {|uri| @brokers.create(uri: uri)}
     end
 
     # Looks up the broker with the given unique id
@@ -56,7 +46,7 @@ module Neptune
     # looked up in the cluster.
     # @return [Neptune::Topic] the topic `nil` if the topic is unknown
     def topic(name)
-      if !@topics.key?(name)
+      if !@topics[name]
         refresh([name])
       elsif refresh?
         # On periodic refreshes, errors shouldn't prevent the client from
@@ -86,26 +76,17 @@ module Neptune
       options = {raise_on_error: true}.merge(options)
 
       # Add already-known topics
-      topic_names += topics.values.map(&:name)
+      topic_names += topics.map(&:name)
       topic_names.uniq!
+
+      # Shuffle so that every client doesn't attempt to refresh on the same broker
+      brokers = self.brokers.to_a.shuffle
 
       # Attempt a refresh on the first available broker
       retriable('Metadata', attempts: brokers.count, raise_on_error: options[:raise_on_error], backoff: 0) do |index|
-        metadata = brokers.values[index].metadata(topic_names)
-
-        # Update topics
-        metadata.topics.each do |topic|
-          topic.cluster = self
-          topics[topic.name] = topic
-        end
-
-        # Update brokers
-        metadata.brokers.each do |broker|
-          # Index by ID and remove any indexes by URI since the ID is now known
-          broker.cluster = self
-          brokers[broker.id] = broker
-          brokers.delete(broker.uri)
-        end
+        metadata = brokers[index].metadata(topic_names)
+        metadata.topics.each {|topic| topics << topic}
+        metadata.brokers.each {|broker| self.brokers << broker}
 
         @last_refreshed_at = Time.now
         true
@@ -198,10 +179,10 @@ module Neptune
       []
     end
 
-    # Closes all open connections to brokers
+    # Closes all open connections in brokers
     # @return [Boolean] always true
     def shutdown
-      connections.each {|connection| connection.close}
+      brokers.each {|broker| broker.close}
       true
     end
 

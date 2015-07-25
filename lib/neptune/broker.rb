@@ -19,19 +19,15 @@ module Neptune
     # @return [Neptune::Cluster]
     attr_accessor :cluster
 
-    # The connection being used by the broker
-    # @return [Neptune::Connection]
-    attr_reader :connection
-
     def initialize(*) #:nodoc:
       super
       @correlation_id = 0
     end
 
-    # The connection to use for this broker
+    # The connection being used by the broker
     # @return [Neptune::Connection]
     def connection
-      @connection ||= cluster.connections[uri]
+      @connection ||= Connection.new(host, port, cluster.config)
     end
 
     # The URI for this broker
