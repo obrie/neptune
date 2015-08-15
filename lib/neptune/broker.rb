@@ -84,8 +84,8 @@ module Neptune
     def fetch(requests)
       request = Api::Fetch::BatchRequest.new(
         client_id: cluster.config[:client_id],
-        max_wait_time: cluster.config[:max_wait_time],
-        min_bytes: cluster.config[:min_bytes],
+        max_wait_time: cluster.config[:max_fetch_time],
+        min_bytes: cluster.config[:min_fetch_bytes],
         requests: requests
       )
       write(request)

@@ -148,7 +148,7 @@ module Neptune
           topic_name: topic.name,
           partition_id: partition.id,
           offset: offset,
-          max_bytes: config[:max_bytes]
+          max_bytes: config[:max_fetch_bytes]
         )]
 
         responses = partition.leader.fetch(requests)

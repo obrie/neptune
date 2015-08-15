@@ -16,11 +16,6 @@ module Neptune
     # @return [Fixnum]
     attr_accessor :retry_backoff
 
-    # The amount of time to wait (in ms) until timing out on receiving an
-    # acknowledgement from a broker's followers
-    # @return [Fixnum]
-    attr_accessor :ack_timeout
-
     # The amount of time to wait (in ms) until timing out on reads
     # @return [Fixnum]
     attr_accessor :read_timeout
@@ -59,6 +54,11 @@ module Neptune
     # @return [Fixnum]
     attr_accessor :required_acks
 
+    # The amount of time to wait (in ms) until timing out on receiving an
+    # acknowledgement from a broker's followers
+    # @return [Fixnum]
+    attr_accessor :ack_timeout
+
     #
     # Consumer-specific configurations
     #
@@ -66,16 +66,16 @@ module Neptune
     # The maximum amount of time to block waiting if insufficient data is
     # available at the time the request is issued
     # @return [Fixnum]
-    attr_accessor :max_wait_time
+    attr_accessor :max_fetch_time
 
     # The minimum number of bytes of messages that must be available to give a
     # response. If set to 0, the server will always respond immediately.
     # @return [Fixnum]
-    attr_accessor :min_bytes
+    attr_accessor :min_fetch_bytes
 
     # The maximum bytes to include in messages for partition requests
     # @return [Fixnum]
-    attr_accessor :max_bytes
+    attr_accessor :max_fetch_bytes
 
     def initialize(options = {}) #:nodoc:
       options = {
@@ -95,9 +95,9 @@ module Neptune
         compression_codec: :none,
 
         # Consumer configurations
-        max_wait_time: 100,
-        min_bytes: 1,
-        max_bytes: 1024 * 1024
+        max_fetch_time: 100,
+        min_fetch_bytes: 1,
+        max_fetch_bytes: 1024 * 1024
        }.merge(options)
       options.each {|option, value| send("#{option}=", value)}
     end
