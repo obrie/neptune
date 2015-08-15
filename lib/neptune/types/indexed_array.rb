@@ -32,11 +32,13 @@ module Neptune
       def to_kafka(values, *args)
         buffer = Buffer.new
 
+        # Group by common index
+        values_by_index = values.group_by {|value| value.send(index_name)}
+
         # Add size of hash
-        buffer.concat(Int32.to_kafka(values.size))
+        buffer.concat(Int32.to_kafka(values_by_index.size))
 
         # Write out each index / array combination
-        values_by_index = values.group_by {|value| value.send(index_name)}
         values_by_index.each do |index_value, values|
           buffer.concat(index_type.to_kafka(index_value, *args))
           buffer.concat(super(values, *args))
