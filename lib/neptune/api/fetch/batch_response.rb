@@ -14,10 +14,10 @@ module Neptune
 
         def initialize(*) #:nodoc:
           super
-          @responses ||= {}
+          @responses ||= []
         end
 
-        delegate :each => :responses
+        delegate [:each, :<<] => :responses
 
         # Messages for the requested topics / partitions
         # @return [Array<Neptune::Message>]

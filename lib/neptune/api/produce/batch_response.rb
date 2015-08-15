@@ -17,7 +17,7 @@ module Neptune
           @responses ||= []
         end
 
-        delegate :each => :responses
+        delegate [:each, :<<] => :responses
       end
     end
   end
