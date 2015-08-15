@@ -47,11 +47,11 @@ module Neptune
     # @return [Neptune::Topic] the topic `nil` if the topic is unknown
     def topic(name)
       if !@topics[name]
-        refresh([name])
+        refresh!([name])
       elsif refresh?
         # On periodic refreshes, errors shouldn't prevent the client from
         # continuing to interact with Kafka
-        refresh([name], raise_on_error: false)
+        refresh([name])
       end
 
       @topics[name]
@@ -67,14 +67,13 @@ module Neptune
     # Whether a refresh of the cluster metadata is needed
     # @return [Boolean]
     def refresh?
-      !@last_refreshed_at || (Time.now - @last_refreshed_at) * 1000 >= config[:refresh_interval]
+      !last_refreshed_at || (Time.now - last_refreshed_at) * 1000 >= config[:refresh_interval]
     end
 
-    # Refreshes the metadata associated with the given topics
+    # Refreshes the metadata associated with the given topics or raise an exception
+    # if it fails
     # @return [Boolean]
-    def refresh(topic_names, options = {})
-      options = {raise_on_error: true}.merge(options)
-
+    def refresh!(topic_names)
       # Add already-known topics
       topic_names += topics.map(&:name)
       topic_names.uniq!
@@ -83,7 +82,7 @@ module Neptune
       brokers = self.brokers.to_a.shuffle
 
       # Attempt a refresh on the first available broker
-      retriable('Metadata', attempts: brokers.count, raise_on_error: options[:raise_on_error], backoff: 0) do |index|
+      retriable('Metadata', attempts: brokers.count, backoff: 0) do |index|
         metadata = brokers[index].metadata(topic_names)
         metadata.topics.each {|topic| topics << topic}
         metadata.brokers.each {|broker| self.brokers << broker}
@@ -91,6 +90,14 @@ module Neptune
         @last_refreshed_at = Time.now
         true
       end
+    end
+
+    # Refreshes the metadata associated with the given topics
+    # @return [Boolean]
+    def refresh(topic_names)
+      refresh!(topic_names)
+    rescue APIError
+      false
     end
 
     # Forces a refresh the next time metadata attempts to be accessed for a
@@ -196,7 +203,6 @@ module Neptune
     def retriable(api, options = {})
       attempts = options.fetch(:attempts, config[:retry_count])
       exceptions = options.fetch(:exceptions, [ConnectionError])
-      raise_on_error = options.fetch(:raise_on_error, true)
       backoff = options.fetch(:backoff, config[:retry_backoff])
       completed = false
 
@@ -206,7 +212,7 @@ module Neptune
             break if completed = yield(attempt)
           rescue *exceptions => ex
             logger.warn "[Neptune] Failed to call #{api} API: #{ex.message}"
-            raise if attempt == attempts - 1 && raise_on_error
+            raise if attempt == attempts - 1
           end
 
           if attempt < attempts - 1
