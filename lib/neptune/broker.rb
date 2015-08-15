@@ -60,7 +60,13 @@ module Neptune
       if request.required_acks != 0
         read(Api::Produce::BatchResponse)
       else
-        Api::Produce::BatchResponse.new
+        Api::Produce::BatchResponse.new(responses: requests.map do |request|
+          Api::Produce::Response.new(
+            topic_name: request.topic_name,
+            partition_id: request.partition_id,
+            error_code: ErrorCode.find_by_name(:no_error)
+          )
+        end)
       end
     end
 
