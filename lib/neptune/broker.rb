@@ -49,9 +49,9 @@ module Neptune
     # @return [Neptune::Api::Produce::BatchResponse]
     def produce(requests)
       request = Api::Produce::BatchRequest.new(
-        client_id: cluster.config[:client_id],
-        required_acks: cluster.config[:required_acks],
-        ack_timeout: cluster.config[:ack_timeout],
+        client_id: cluster.config.client_id,
+        required_acks: cluster.config.required_acks,
+        ack_timeout: cluster.config.ack_timeout,
         requests: requests
       )
 
@@ -76,7 +76,7 @@ module Neptune
     # @return [Neptune::Api::Metadata::Response]
     def metadata(topic_names)
       request = Api::Metadata::Request.new(
-        client_id: cluster.config[:client_id],
+        client_id: cluster.config.client_id,
         topic_names: topic_names
       )
       write(request)
@@ -89,9 +89,9 @@ module Neptune
     # @return [Neptune::Api::Fetch::BatchResponse]
     def fetch(requests)
       request = Api::Fetch::BatchRequest.new(
-        client_id: cluster.config[:client_id],
-        max_wait_time: cluster.config[:max_fetch_time],
-        min_bytes: cluster.config[:min_fetch_bytes],
+        client_id: cluster.config.client_id,
+        max_wait_time: cluster.config.max_fetch_time,
+        min_bytes: cluster.config.min_fetch_bytes,
         requests: requests
       )
       write(request)
