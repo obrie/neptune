@@ -2,6 +2,7 @@ require 'forwardable'
 require 'pp'
 require 'neptune/errors'
 require 'neptune/error_code'
+require 'neptune/helpers/pretty_print'
 require 'neptune/types'
 
 module Neptune
@@ -100,6 +101,7 @@ module Neptune
       end
     end
 
+    include Helpers::PrettyPrint
     extend Forwardable
 
     # Initializes this resources with the given attributes.  This will continue
@@ -162,29 +164,6 @@ module Neptune
     # @return [Neptune::Buffer]
     def to_kafka
       self.class.to_kafka(self)
-    end
-
-    # Forces this object to use PP's implementation of inspection.
-    # 
-    # @api private
-    # @return [String]
-    def pretty_print(q)
-      q.pp_object(self)
-    end
-    alias inspect pretty_print_inspect
-
-    # Defines the instance variables that should be printed when inspecting this
-    # object.  This ignores the +@cluster+ and +@config+ variables.
-    # 
-    # @api private
-    # @return [Array<Symbol>]
-    def pretty_print_instance_variables
-      (instance_variables - pretty_print_ignore).sort
-    end
-
-    private
-    def pretty_print_ignore #:nodoc:
-      []
     end
   end
 end

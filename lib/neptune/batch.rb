@@ -1,125 +1,158 @@
+require 'forwardable'
 require 'set'
-require 'neptune/api/produce/request'
-require 'neptune/message'
+require 'neptune/error_code'
+require 'neptune/helpers/pretty_print'
 
 module Neptune
-  # Tracks a batch of messages to produce
+  # Tracks a batch of api requests
   class Batch
-    # The last error code that was encountered when publishing
-    # @return [Neptune::ErrorCode]
-    attr_reader :last_error_code
+    include Helpers::PrettyPrint
+    extend Forwardable
 
-    # The list of messages that failed to be published
-    # @return [Array<Hash>]
-    attr_reader :failed_messages
+    # The base module for this batch's API
+    # @return [Module]
+    def self.api
+      @api ||= Neptune::Api.const_get(name.match(/([^:]+)::Batch$/)[1])
+    end
+
+    # The name for this batch's API
+    # @return [String]
+    def self.api_name
+      @api_name ||= Api.name_for(api)
+    end
+
+    # The list of requests to process
+    # @return [Array<Neptune::Resource>]
+    attr_reader :requests
+
+    # The responses for each request, keyed by request
+    # @return [Hash<Neptune::Resource, Neptune::Resource>]
+    attr_reader :responses_by_request
 
     def initialize(cluster, &block) #:nodoc:
       @cluster = cluster
-      @messages = []
-      @failed_messages = []
+      @requests = []
+      @responses_by_request = {}
+      @callbacks = {}
+    end
 
-      if block
-        instance_eval(&block)
-        process
+    # The responses from all of the requests in this batch, including those
+    # that failed
+    # @return [Neptune::Resource]
+    def responses
+      api::BatchResponse.new(responses: responses_by_request.values.uniq)
+    end
+
+    # The response for the given request
+    # @return [Netpune::Resource]
+    def response_for(request)
+      @responses_by_request[request]
+    end
+
+    # The list of requests that failed to be delivered successfully
+    # @return [Array<Neptune::Resource>]
+    def failed_requests
+      requests.select do |request|
+        response = response_for(request)
+        !response || !response.success?
       end
     end
 
-    # Adds the give message to this batch
+    # The list of requests that failed to be delivered successfully, but are retriable
+    # @return [Array<Neptune::Resource>]
+    def retriable_requests
+      requests.select do |request|
+        response = response_for(request)
+        !response || response.retriable?
+      end
+    end
+
+    # Adds the give request to this batch
     # @return [Boolean] true, always
-    def add(topic_name, value, key = nil)
-      @messages << {topic_name: topic_name, value: value, key: key}
+    def add(request, callback = nil)
+      @requests << request
+      @callbacks[request] = callback if callback
       true
     end
 
-    # Processes all of the messages in the batch
-    # @return [Boolean] true if all messages are sent successfully, otherwise false
-    def process
-      # Track remaining messages to be processed
-      remaining = Set.new(@messages.map {|m| m.merge(id: m.object_id)})
+    # Processes all of the requests in the batch
+    # @return [Neptune::Resource] The BatchResponse object for this batch's API
+    def run
+      @cluster.retriable(api_name) do
+        process(retriable_requests)
 
-      @cluster.retriable('Produce') do
-        by_leader = messages_by_leader(remaining)
-        by_leader.each do |leader, by_topic|
-          # Create requests
-          requests = build_requests(by_topic)
-
-          # Send the request
-          responses = leader.produce(requests)
-
-          if responses.success?
-            # Remove all messages that were just published
-            messages = by_topic.values.map(&:values).flatten
-            remaining.subtract(messages)
-          else
-            # Remove individual messages that were successful or failed
-            responses.each do |response|
-              messages = by_topic[response.topic_name][response.partition_id]
-
-              # Track successful / failed messages
-              if response.success? || !response.retriable?
-                remaining.subtract(messages)
-                failed_messages.concat(messages) unless response.retriable?
-              end
-              @last_error_code = response.error_code unless response.success?
-            end
-          end
-        end
-
-        # Stop retrying when there are no more messages remaining
-        remaining.empty?
+        # Stop retrying when there are no more requests to retry
+        retriable_requests.empty?
       end
 
-      # Any remaining unprocessed messages are marked as failed
-      failed_messages.concat(remaining.to_a)
-      failed_messages.each {|message| message.delete(:id)}
-
-      success?
+      responses
     end
 
-    # Whether this batch was processed successfully
-    # @return [Boolean]
-    def success?
-      failed_messages.empty?
+    protected
+    # Process requests, grouped by broker
+    def process(requests)
+      by_broker = requests.group_by {|request| broker_for(request)}
+      by_broker.each do |broker, requests|
+        process_broker(broker, requests)
+      end
+    end
+
+    # Process requests for the given broker
+    # @return [Neptune::Resource]
+    def process_broker(broker, requests)
+      if broker
+        # Send the requests to the broker
+        responses = broker.send(api_name, requests).responses
+      else
+        # Create responses based on the lack of a broker
+        responses = requests.map do |request|
+          api::Response.new(
+            topic_name: request.topic_name,
+            partition_id: request.partition_id,
+            error_code: ErrorCode.find_by_name(:leader_not_available)
+          )
+        end
+      end
+
+      # Record responses
+      requests.each do |request|
+        response = responses.detect {|response| response.topic_name == request.topic_name && response.partition_id == request.partition_id}
+        record_response(request, response)
+      end
+
+      # Run callbacks
+      requests.each {|request| run_callbacks(request)}
+
+      responses
+    end
+
+    # Associates a response with the given request
+    def record_response(request, response)
+      @responses_by_request[request] = response
+    end
+
+    # Runs any callbacks registered with the given request
+    def run_callbacks(request)
+      callback = @callbacks[request]
+      response = response_for(request)
+      if callback && response && response.success?
+        callback.call(api::BatchResponse.new(responses: [response]))
+      end
     end
 
     private
-    # Map a set of messages by leader -> topic -> partition -> messages
-    # @return [Hash]
-    def messages_by_leader(messages)
-      by_leader = Hash.new {|h, k| h[k] = Hash.new {|h, k| h[k] = Hash.new {|h, k| h[k] = []}}}
+    delegate [:api, :api_name] => :'self.class'
 
-      messages.each do |message|
-        topic = @cluster.topic!(message[:topic_name])
-        partition = topic.partition_for(message[:key])
-        if partition
-          by_leader[partition.leader][topic][partition] << message
-        end
-      end
-
-      by_leader
+    # The broker that the given request should be delivered to
+    # @return [Neptune::Broker]
+    def broker_for(request)
+      topic = @cluster.topic!(request.topic_name)
+      partition = topic.partition!(request.partition_id)
+      partition && partition.leader
     end
 
-    # Builds a set of requests based on a topic and set of messages grouped by
-    # partition
-    # @return [Array<Neptune::Api::Produce::Request>]
-    def build_requests(by_topic)
-      requests = []
-
-      by_topic.each do |topic, by_partition|
-        by_partition.each do |partition, messages|
-          request = Api::Produce::Request.new(
-            topic_name: topic.name,
-            partition_id: partition.id,
-            messages: messages.map do |message|
-              Message.new(key: message[:key], value: message[:value])
-            end
-          )
-          request.compress(topic.compression_codec) if topic.compressed?
-          requests << request
-        end
-      end
-
-      requests
+    def pretty_print_ignore #:nodoc:
+      [:@cluster, :@callbacks]
     end
   end
 end

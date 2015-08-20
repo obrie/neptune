@@ -3,7 +3,7 @@ require 'neptune/broker_collection'
 require 'neptune/config'
 require 'neptune/loggable'
 require 'neptune/topic_collection'
-require 'neptune/api/fetch'
+require 'neptune/api'
 
 module Neptune
   # A group of brokers
@@ -31,6 +31,7 @@ module Neptune
       @brokers = BrokerCollection.new(self)
       @topics = TopicCollection.new(self)
       @config = Config.new(config)
+      @batches = {}
 
       # Add seed brokers
       brokers.each {|uri| @brokers.create(uri: uri)}
@@ -82,7 +83,7 @@ module Neptune
       brokers = self.brokers.to_a.shuffle
 
       # Attempt a refresh on the first available broker
-      retriable('Metadata', attempts: brokers.count, backoff: 0) do |index|
+      retriable(:metadata, attempts: brokers.count, backoff: 0) do |index|
         metadata = brokers[index].metadata(topic_names)
         metadata.topics.each {|topic| topics << topic}
         metadata.brokers.each {|broker| self.brokers << broker}
@@ -106,84 +107,64 @@ module Neptune
       @last_refreshed_at = nil
     end
 
-    # Publish a value to a given topic or raise an exception if it fails
-    # @return [Boolean]
-    def produce!(topic_name, value, key = nil)
-      if @batch
-        @batch.add(topic_name, value, key)
-      else
-        batch = Batch.new(self) { add(topic_name, value, key) }
-        batch.success? || raise(APIError.new(batch.last_error_code))
-      end
-    end
-
     # Publish a value to a given topic
     # @return [Boolean]
-    def produce(*args)
-      produce!(*args)
-    rescue APIError
-      false
+    def produce(topic_name, value, key = nil, &callback)
+      run_or_update_batch(:produce,
+        Api::Produce::Request.new(
+          topic_name: topic_name,
+          messages: [Message.new(key: key, value: value)]
+        ),
+        callback
+      )
     end
 
-    # Produces a batch of messages
-    # @yield [Neptune::Batch]
-    # @return [Neptune::Batch]
-    def batch(&block)
-      if @batch
-        yield
-      else
-        batch = Batch.new(self)
-        begin
-          @batch = batch
-          yield
-          @batch.process
-          batch
-        ensure
-          @batch = nil
-        end
-      end
-    end
-
-    # Fetch messages from the given topic / partition or raise an exception if it fails
-    # @return [Array<Netpune::Message>]
-    def fetch!(topic_name, partition_id, offset)
-      retriable('Fetch') do
-        topic = topic!(topic_name)
-        partition = topic.partition!(partition_id)
-
-        requests = [Api::Fetch::Request.new(
-          topic_name: topic.name,
-          partition_id: partition.id,
-          offset: offset,
-          max_bytes: config[:max_fetch_bytes]
-        )]
-
-        responses = partition.leader.fetch(requests)
-        if responses.success?
-          # Update highwater mark offsets for each partition
-          responses.each do |response|
-            topic = topic!(response.topic_name)
-            partition = topic.partition!(response.partition_id)
-            partition.highwater_mark_offset = response.highwater_mark_offset
-          end
-
-          # Associate partitions with messages
-          messages = responses.messages
-          messages.each {|message| message.partition = partition}
-
-          messages
-        else
-          raise(APIError.new(responses.error_code))
-        end
+    # Publish a value to a given topic or raise an exception if it fails
+    # @return [Boolean]
+    def produce!(*args, &callback)
+      produce(*args, &callback).tap do |responses|
+        raise(APIError.new(responses.error_code)) if responses && !responses.success?
       end
     end
 
     # Fetch messages from the given topic / partition
-    # @return [Array<Netpune::Message>]
-    def fetch(*args)
-      fetch!(*args)
-    rescue APIError
-      []
+    # @return [Array<Neptune::Message>]
+    def fetch(topic_name, partition_id, offset, &callback)
+      run_or_update_batch(:fetch,
+        Api::Fetch::Request.new(
+          topic_name: topic_name,
+          partition_id: partition_id,
+          offset: offset,
+          max_bytes: config[:max_fetch_bytes]
+        ),
+        callback
+      )
+    end
+
+    # Fetch messages from the given topic / partition or raise an exception if it fails
+    # @return [Array<Neptune::Message>]
+    def fetch!(*args, &callback)
+      fetch(*args, &callback).tap do |responses|
+        raise(APIError.new(responses.error_code)) if responses && !responses.success?
+      end
+    end
+
+    # Runs a batch of API calls
+    # @yield [Neptune::Batch]
+    # @return [Neptune::Batch]
+    def batch(api_name)
+      if batch = @batches[api_name]
+        raise(Error.new("A batch has already been started for #{api_name} API"))
+      else
+        batch = @batches[api_name] = Api.get(api_name)::Batch.new(self)
+        begin
+          yield
+          batch.run
+          batch
+        ensure
+          @batches.delete(api_name)
+        end
+      end
     end
 
     # Closes all open connections in brokers
@@ -200,7 +181,7 @@ module Neptune
     # the problem.
     # 
     # @return [Boolean] whether the block completed successfully
-    def retriable(api, options = {})
+    def retriable(api_name, options = {})
       attempts = options.fetch(:attempts, config[:retry_count])
       exceptions = options.fetch(:exceptions, [ConnectionError])
       backoff = options.fetch(:backoff, config[:retry_backoff])
@@ -211,7 +192,7 @@ module Neptune
           begin
             break if completed = yield(attempt)
           rescue *exceptions => ex
-            logger.warn "[Neptune] Failed to call #{api} API: #{ex.message}"
+            logger.warn "[Neptune] Failed to call #{api_name} API: #{ex.message}"
             raise if attempt == attempts - 1
           end
 
@@ -224,6 +205,21 @@ module Neptune
       end
 
       completed
+    end
+
+    private
+    # Starts or continues a request batch for the given API.  If a callback
+    # is provided, then that block will be called.  Otherwise, a single
+    # request will be added to the batch.
+    def run_or_update_batch(api_name, request, callback)
+      if batch = @batches[api_name]
+        batch.add(request, callback)
+        nil
+      else
+        batch = Api.get(api_name)::Batch.new(self)
+        batch.add(request, callback)
+        batch.run
+      end
     end
   end
 end
