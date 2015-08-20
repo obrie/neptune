@@ -62,7 +62,7 @@ module Neptune
     end
 
     def pretty_print_ignore #:nodoc:
-      [:'@topic']
+      [:@topic]
     end
   end
 end

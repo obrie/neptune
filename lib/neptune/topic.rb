@@ -94,7 +94,7 @@ module Neptune
     end
 
     def pretty_print_ignore #:nodoc:
-      [:'@cluster']
+      [:@cluster]
     end
   end
 end

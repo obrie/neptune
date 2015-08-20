@@ -91,7 +91,7 @@ module Neptune
 
     private
     def pretty_print_ignore #:nodoc:
-      [:'@partition']
+      [:@partition]
     end
   end
 end
