@@ -7,9 +7,9 @@ Features currently implemented:
 * Metadata
 * Produce
 * Compression
+* Fetch
 
 Upcoming features:
-* Fetch
 * Offset management
 
 ## Background
@@ -30,11 +30,21 @@ require 'neptune'
 
 cluster = Neptune::Cluster.new(['localhost:9092'], client_id: 'my_test_producer')
 cluster.topic('topic1')
+
 cluster.produce('topic1', 'value1')
 cluster.produce!('topic1', 'value1', 'key1')
-cluster.batch do
+
+cluster.batch(:produce) do
   cluster.produce('topic1', 'value1')
   cluster.produce('topic1', 'value1', 'key1')
+end
+
+cluster.fetch('topic1', 0, 0)
+cluster.fetch!('topic1', 0, 0)
+
+cluster.batch(:fetch) do
+  cluster.fetch('topic1', 0, 0)
+  cluster.fetch('topic2', 0, 0)
 end
 ```
 
