@@ -56,6 +56,18 @@ module Neptune
       error_code.success? || error_code == :replica_not_available
     end
 
+    # Fetch messages from this partition
+    # @return [Neptune::Fetch::BatchResponse]
+    def fetch(offset, &callback)
+      cluster.fetch(topic.name, id, offset, &callback)
+    end
+
+    # Fetch messages from this partition or raise an exception if it fails
+    # @return [Neptune::Fetch::BatchResponse]
+    def fetch!(*args, &callback)
+      cluster.fetch!(topic.name, id, *args, &callback)
+    end
+
     private
     def cluster #:nodoc:
       topic.cluster

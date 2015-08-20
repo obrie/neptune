@@ -110,7 +110,7 @@ module Neptune
     end
 
     # Publish a value to a given topic
-    # @return [Boolean]
+    # @return [Neptune::Produce::BatchResponse]
     def produce(topic_name, value, options = {}, &callback)
       assert_valid_keys(options, [:key])
 
@@ -124,7 +124,7 @@ module Neptune
     end
 
     # Publish a value to a given topic or raise an exception if it fails
-    # @return [Boolean]
+    # @return [Neptune::Produce::BatchResponse]
     def produce!(*args, &callback)
       produce(*args, &callback).tap do |responses|
         raise(APIError.new(responses.error_code)) if responses && !responses.success?
@@ -132,7 +132,7 @@ module Neptune
     end
 
     # Fetch messages from the given topic / partition
-    # @return [Array<Neptune::Message>]
+    # @return [Neptune::Fetch::BatchResponse]
     def fetch(topic_name, partition_id, offset, &callback)
       run_or_update_batch(:fetch,
         Api::Fetch::Request.new(
@@ -146,7 +146,7 @@ module Neptune
     end
 
     # Fetch messages from the given topic / partition or raise an exception if it fails
-    # @return [Array<Neptune::Message>]
+    # @return [Neptune::Fetch::BatchResponse]
     def fetch!(*args, &callback)
       fetch(*args, &callback).tap do |responses|
         raise(APIError.new(responses.error_code)) if responses && !responses.success?

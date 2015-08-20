@@ -86,6 +86,18 @@ module Neptune
       end
     end
 
+    # Publish a value to this topic
+    # @return [Neptune::Produce::BatchResponse]
+    def produce(value, options = {}, &callback)
+      cluster.produce(name, value, options, &callback)
+    end
+
+    # Publish a value to this topic or raise an exception if it fails
+    # @return [Neptune::Produce::BatchResponse]
+    def produce!(*args, &callback)
+      cluster.produce!(name, *args, &callback)
+    end
+
     private
     # Counter used to round-robin between partitions
     # @return [Fixnum]
