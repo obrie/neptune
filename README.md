@@ -32,11 +32,11 @@ cluster = Neptune::Cluster.new(['localhost:9092'], client_id: 'my_test_producer'
 cluster.topic('topic1')
 
 cluster.produce('topic1', 'value1')
-cluster.produce!('topic1', 'value1', 'key1')
+cluster.produce!('topic1', 'value1', key: 'key1')
 
 cluster.batch(:produce) do
   cluster.produce('topic1', 'value1')
-  cluster.produce('topic1', 'value1', 'key1')
+  cluster.produce('topic1', 'value1', key: 'key1')
 end
 
 cluster.fetch('topic1', 0, 0)

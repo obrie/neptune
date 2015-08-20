@@ -1,14 +1,16 @@
 require 'neptune/batch'
 require 'neptune/broker_collection'
 require 'neptune/config'
-require 'neptune/loggable'
+require 'neptune/helpers/assertions'
+require 'neptune/helpers/loggable'
 require 'neptune/topic_collection'
 require 'neptune/api'
 
 module Neptune
   # A group of brokers
   class Cluster
-    include Loggable
+    include Helpers::Assertions
+    include Helpers::Loggable
 
     # List of brokers known to the cluster
     # @return [Neptune::BrokerCollection]
@@ -109,11 +111,13 @@ module Neptune
 
     # Publish a value to a given topic
     # @return [Boolean]
-    def produce(topic_name, value, key = nil, &callback)
+    def produce(topic_name, value, options = {}, &callback)
+      assert_valid_keys(options, [:key])
+
       run_or_update_batch(:produce,
         Api::Produce::Request.new(
           topic_name: topic_name,
-          messages: [Message.new(key: key, value: value)]
+          messages: [Message.new(key: options[:key], value: value)]
         ),
         callback
       )
