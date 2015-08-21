@@ -68,6 +68,24 @@ module Neptune
       cluster.fetch!(topic.name, id, *args, &callback)
     end
 
+    # The earliest offset available for this partition
+    # @return [Fixnum]
+    def earliest_offset
+      offset_at(:earliest)
+    end
+
+    # The latest offset available for this partition
+    # @return [Fixnum]
+    def latest_offset
+      offset_at(:latest)
+    end
+
+    # The first offset that was available prior to the given time
+    # @return [Fixnum]
+    def offset_at(time)
+      cluster.offset!(topic.name, id, time: time).value
+    end
+
     private
     def cluster #:nodoc:
       topic.cluster

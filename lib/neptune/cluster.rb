@@ -153,6 +153,31 @@ module Neptune
       end
     end
 
+    # Looks up valid offsets available within a given topic / partition
+    # @return [Neptune::Offset::BatchResponse]
+    def offset(topic_name, partition_id, options = {}, &callback)
+      assert_valid_keys(options, :time)
+      options = {time: :latest}.merge(options)
+
+      run_or_update_batch(:offset,
+        Api::Offset::Request.new(
+          topic_name: topic_name,
+          partition_id: partition_id,
+          time: options[:time]
+        ),
+        callback
+      )
+    end
+
+    # Looks up valid offsets available within a given topic / partition or
+    # raises an exception if the request fails
+    # @return [Neptune::Offset::BatchResponse]
+    def offset!(*args, &callback)
+      offset(*args, &callback).tap do |responses|
+        raise(APIError.new(responses.error_code)) if responses && !responses.success?
+      end
+    end
+
     # Runs a batch of API calls
     # @yield [Neptune::Batch]
     # @return [Neptune::Batch]

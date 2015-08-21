@@ -43,7 +43,7 @@ module Neptune
       self.port = port
     end
 
-    # Invokes the produce API with the given topic requests
+    # Invokes the produce API with the given requests
     #
     # @param [Array<String, Neptune::Api::Produce::Request>] requests Messages to send for each topic/partition
     # @return [Neptune::Api::Produce::BatchResponse]
@@ -83,7 +83,7 @@ module Neptune
       read(Api::Metadata::Response)
     end
 
-    # Invokes the fetch API with the given topic requests
+    # Invokes the fetch API with the given requests
     #
     # @param [Array<Neptune::Api::Fetch::Request>] requests Topics/partitions to fetch messages from
     # @return [Neptune::Api::Fetch::BatchResponse]
@@ -96,6 +96,19 @@ module Neptune
       )
       write(request)
       read(Api::Fetch::BatchResponse)
+    end
+
+    # Invokes the offset API with the given requests
+    #
+    # @param [Array<Neptune::Api::Offset::Request>] requests Topics/partitions to look up offsets for
+    # @return [Neptune::Api::Offset::BatchResponse]
+    def offset(requests)
+      request = Api::Offset::BatchRequest.new(
+        client_id: cluster.config.client_id,
+        requests: requests
+      )
+      write(request)
+      read(Api::Offset::BatchResponse)
     end
 
     # Close any open connections to the broker

@@ -1,5 +1,6 @@
 require 'neptune/api/fetch'
 require 'neptune/api/metadata'
+require 'neptune/api/offset'
 require 'neptune/api/produce'
 
 module Neptune
@@ -7,6 +8,7 @@ module Neptune
     NAMES = {
       fetch: Fetch,
       metadata: Metadata,
+      offset: Offset,
       produce: Produce
     }
 

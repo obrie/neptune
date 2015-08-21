@@ -46,6 +46,10 @@ cluster.batch(:fetch) do
   cluster.fetch('topic1', 0, 0)
   cluster.fetch('topic2', 0, 0)
 end
+
+cluster.offset('topic1', 0, time: :earliest)
+cluster.offset('topic1', 0, time: :latest)
+cluster.offset('topic1', 0, time: Time.now.to_i - 1000)
 ```
 
 ## Requirements
