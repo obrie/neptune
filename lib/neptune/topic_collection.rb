@@ -28,6 +28,13 @@ module Neptune
       topic
     end
 
+    # Removes the topic, if it exists, with the given name
+    # @return [Boolean] true, always
+    def delete(name)
+      @by_name.delete(name)
+      true
+    end
+
     # Adds the given topic, syncing it with any topic that exists with the
     # same name
     # @return [Neptune::Topic]

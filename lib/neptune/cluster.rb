@@ -45,26 +45,29 @@ module Neptune
       @brokers[id]
     end
 
-    # Looks up the topic with the given name.  Missing topic metadata will be
-    # looked up in the cluster.
-    # @return [Neptune::Topic] the topic `nil` if the topic is unknown
-    def topic(name)
-      if !@topics[name]
-        refresh!([name])
-      elsif refresh?
-        # On periodic refreshes, errors shouldn't prevent the client from
-        # continuing to interact with Kafka
-        refresh([name])
-      end
-
-      @topics[name]
-    end
-
     # Looks up the topic with the given name.
     # @raise [Neptune::InvalidTopicError] if the topic is not found
     # @return [Neptune::Topic]
     def topic!(name)
-      topic(name) || raise(InvalidTopicError.new("Unknown topic: #{name.inspect}"))
+      if !@topics[name] || refresh?
+        refresh!([name])
+      end
+
+      @topics[name].tap do |topic|
+        unless topic.exists?
+          @topics.delete(name)
+          topic.error_code.raise
+        end
+      end
+    end
+
+    # Looks up the topic with the given name.  Missing topic metadata will be
+    # looked up in the cluster.
+    # @return [Neptune::Topic] the topic `nil` if the topic is unknown
+    def topic(name)
+      topic!(name)
+    rescue Error
+      nil
     end
 
     # Whether a refresh of the cluster metadata is needed
@@ -99,7 +102,7 @@ module Neptune
     # @return [Boolean]
     def refresh(topic_names)
       refresh!(topic_names)
-    rescue APIError
+    rescue Error
       false
     end
 
@@ -109,9 +112,9 @@ module Neptune
       @last_refreshed_at = nil
     end
 
-    # Publish a value to a given topic
+    # Publish a value to a given topic or raise an exception if it fails
     # @return [Neptune::Produce::BatchResponse]
-    def produce(topic_name, value, options = {}, &callback)
+    def produce!(topic_name, value, options = {}, &callback)
       assert_valid_keys(options, [:key])
 
       run_or_update_batch(:produce,
@@ -120,20 +123,22 @@ module Neptune
           messages: [Message.new(key: options[:key], value: value)]
         ),
         callback
-      )
-    end
-
-    # Publish a value to a given topic or raise an exception if it fails
-    # @return [Neptune::Produce::BatchResponse]
-    def produce!(*args, &callback)
-      produce(*args, &callback).tap do |responses|
+      ).tap do |responses|
         responses.error_code.raise if responses && !responses.success?
       end
     end
 
-    # Fetch messages from the given topic / partition
+    # Publish a value to a given topic
+    # @return [Neptune::Produce::BatchResponse]
+    def produce(topic_name, value, options = {}, &callback)
+      produce!(topic_name, value, options, &callback)
+    rescue Error
+      false
+    end
+
+    # Fetch messages from the given topic / partition or raise an exception if it fails
     # @return [Neptune::Fetch::BatchResponse]
-    def fetch(topic_name, partition_id, offset, &callback)
+    def fetch!(topic_name, partition_id, offset, &callback)
       run_or_update_batch(:fetch,
         Api::Fetch::Request.new(
           topic_name: topic_name,
@@ -142,20 +147,23 @@ module Neptune
           max_bytes: config[:max_fetch_bytes]
         ),
         callback
-      )
-    end
-
-    # Fetch messages from the given topic / partition or raise an exception if it fails
-    # @return [Neptune::Fetch::BatchResponse]
-    def fetch!(*args, &callback)
-      fetch(*args, &callback).tap do |responses|
+      ).tap do |responses|
         responses.error_code.raise if responses && !responses.success?
       end
     end
 
-    # Looks up valid offsets available within a given topic / partition
+    # Fetch messages from the given topic / partition
+    # @return [Neptune::Fetch::BatchResponse]
+    def fetch(topic_name, partition_id, offset, &callback)
+      fetch!(topic_name, partition_id, offset, &callback)
+    rescue Error
+      nil
+    end
+
+    # Looks up valid offsets available within a given topic / partition or
+    # raises an exception if the request fails
     # @return [Neptune::Offset::BatchResponse]
-    def offset(topic_name, partition_id, options = {}, &callback)
+    def offset!(topic_name, partition_id, options = {}, &callback)
       assert_valid_keys(options, :time)
       options = {time: :latest}.merge(options)
 
@@ -166,16 +174,17 @@ module Neptune
           time: options[:time]
         ),
         callback
-      )
-    end
-
-    # Looks up valid offsets available within a given topic / partition or
-    # raises an exception if the request fails
-    # @return [Neptune::Offset::BatchResponse]
-    def offset!(*args, &callback)
-      offset(*args, &callback).tap do |responses|
+      ).tap do |responses|
         responses.error_code.raise if responses && !responses.success?
       end
+    end
+
+    # Looks up valid offsets available within a given topic / partition
+    # @return [Neptune::Offset::BatchResponse]
+    def offset(topic_name, partition_id, options = {}, &callback)
+      offset!(topic_name, partition_id, options = {}, &callback)
+    rescue Error
+      nil
     end
 
     # Runs a batch of API calls

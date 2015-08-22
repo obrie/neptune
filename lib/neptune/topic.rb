@@ -73,7 +73,7 @@ module Neptune
 
     # Determines the partition for the given key
     # @return [Fixnum]
-    def partition_for(key)
+    def partition_for!(key)
       if leader_available?
         if key
           # Use the configured partitioner
@@ -82,6 +82,8 @@ module Neptune
         elsif available_partitions.any?
           # Round-robin between partitions
           available_partitions[next_partition_counter % available_partitions.count]
+        else
+          raise(InvalidPartitionError.new("No partitions available for topic #{name}"))
         end
       end
     end
