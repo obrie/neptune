@@ -73,6 +73,12 @@ module Neptune
       is?(:leader_not_available, :not_leader_for_partition)
     end
 
+    # Raises an API error with this error code
+    # @raise [APIError]
+    def raise
+      super(APIError.new(self))
+    end
+
     # Determines whether this error is equal to another based on their id.
     # 
     # @param [Object] other The object this resource is being compared against

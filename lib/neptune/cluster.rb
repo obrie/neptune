@@ -127,7 +127,7 @@ module Neptune
     # @return [Neptune::Produce::BatchResponse]
     def produce!(*args, &callback)
       produce(*args, &callback).tap do |responses|
-        raise(APIError.new(responses.error_code)) if responses && !responses.success?
+        responses.error_code.raise if responses && !responses.success?
       end
     end
 
@@ -149,7 +149,7 @@ module Neptune
     # @return [Neptune::Fetch::BatchResponse]
     def fetch!(*args, &callback)
       fetch(*args, &callback).tap do |responses|
-        raise(APIError.new(responses.error_code)) if responses && !responses.success?
+        responses.error_code.raise if responses && !responses.success?
       end
     end
 
@@ -174,7 +174,7 @@ module Neptune
     # @return [Neptune::Offset::BatchResponse]
     def offset!(*args, &callback)
       offset(*args, &callback).tap do |responses|
-        raise(APIError.new(responses.error_code)) if responses && !responses.success?
+        responses.error_code.raise if responses && !responses.success?
       end
     end
 
