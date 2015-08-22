@@ -188,6 +188,33 @@ module Neptune
       nil
     end
 
+    # Looks up the broker acting as coordinator for offsets within the given
+    # consumer group
+    # @return [Neptune::Broker]
+    def coordinator(consumer_group = 'default')
+      coordinator!(consumer_group)
+    rescue Error
+      nil
+    end
+
+    # Looks up the broker acting as coordinator for offsets within the given
+    # consumer group or raises an exception of the coordinator isn't found.
+    # @return [Neptune::Broker]
+    def coordinator!(consumer_group = 'default')
+      brokers = self.brokers.to_a.shuffle
+
+      retriable(:consumer_metadata, attempts: brokers.count, backoff: 0) do |index|
+        metadata = brokers[index].consumer_metadata(consumer_group)
+
+        if metadata.success?
+          brokers << metadata.coordinator
+          brokers[metadata.coordinator.id]
+        else
+          metadata.error_code.raise
+        end
+      end
+    end
+
     # Runs a batch of API calls
     # @yield [Neptune::Batch]
     # @return [Neptune::Batch]

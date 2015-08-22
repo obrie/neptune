@@ -112,6 +112,16 @@ module Neptune
       read(Api::Offset::BatchResponse)
     end
 
+    # Fetch metadata for the given consumer group
+    #
+    # @param [String] consumer_group The group to fetch metadata for
+    # @return [Neptune::Api::ConsumerMetadata::Response]
+    def consumer_metadata(consumer_group)
+      request = Api::ConsumerMetadata::Request.new(consumer_group: consumer_group)
+      write(request)
+      read(Api::ConsumerMetadata::Response)
+    end
+
     # Close any open connections to the broker
     # @return [Boolean] true, always
     def close

@@ -1,3 +1,4 @@
+require 'neptune/api/consumer_metadata'
 require 'neptune/api/fetch'
 require 'neptune/api/metadata'
 require 'neptune/api/offset'
