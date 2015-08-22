@@ -1,3 +1,4 @@
+require 'neptune/connection'
 require 'neptune/resource'
 
 module Neptune
@@ -144,5 +145,4 @@ module Neptune
   end
 end
 
-require 'neptune/api/metadata'
-require 'neptune/api/produce'
+require 'neptune/api'
