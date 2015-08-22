@@ -116,7 +116,7 @@ module Neptune
     # Publish a value to a given topic or raise an exception if it fails
     # @return [Neptune::Produce::BatchResponse]
     def produce!(topic_name, value, options = {}, &callback)
-      assert_valid_keys(options, [:key])
+      assert_valid_keys(options, :key)
 
       run_or_update_batch(:produce,
         Api::Produce::Request.new(
@@ -191,8 +191,8 @@ module Neptune
     # Looks up the broker acting as coordinator for offsets within the given
     # consumer group
     # @return [Neptune::Broker]
-    def coordinator(consumer_group = 'default')
-      coordinator!(consumer_group)
+    def coordinator(options = {})
+      coordinator!(options)
     rescue Error
       nil
     end
@@ -200,11 +200,14 @@ module Neptune
     # Looks up the broker acting as coordinator for offsets within the given
     # consumer group or raises an exception of the coordinator isn't found.
     # @return [Neptune::Broker]
-    def coordinator!(consumer_group = 'default')
+    def coordinator!(options = {})
+      assert_valid_keys(options, :group)
+      options = {group: 'default'}.merge(options)
+
       brokers = self.brokers.to_a.shuffle
 
       retriable(:consumer_metadata, attempts: brokers.count, backoff: 0) do |index|
-        metadata = brokers[index].consumer_metadata(consumer_group)
+        metadata = brokers[index].consumer_metadata(options[:group])
 
         if metadata.success?
           brokers << metadata.coordinator

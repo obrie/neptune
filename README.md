@@ -51,8 +51,8 @@ cluster.offset('topic1', 0, time: :earliest)
 cluster.offset('topic1', 0, time: :latest)
 cluster.offset('topic1', 0, time: Time.now.to_i - 1000)
 
-cluster.coordinator('group_name')
-cluster.coordinator!('group_name')
+cluster.coordinator(group: 'name')
+cluster.coordinator!(group: 'name')
 ```
 
 ## Requirements
