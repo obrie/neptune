@@ -55,6 +55,7 @@ module Neptune
 
       @topics[name].tap do |topic|
         unless topic.exists?
+          # Remove knowledge of the topic since it doesn't exist
           @topics.delete(name)
           topic.error_code.raise
         end
