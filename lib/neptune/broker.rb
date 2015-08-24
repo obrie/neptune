@@ -127,16 +127,32 @@ module Neptune
 
     # Fetch metadata for the given consumer group
     #
-    # @param [String] consumer_group The group to fetch metadata for
+    # @param [String] group The group to fetch metadata for
     # @return [Neptune::Api::ConsumerMetadata::Response]
     def consumer_metadata(options = {})
-      assert_valid_keys(options, :consumer_group)
+      assert_valid_keys(options, :group)
 
       request = Api::ConsumerMetadata::Request.new(
-        consumer_group: options.fetch(:consumer_group, cluster.config.consumer_group)
+        consumer_group: options.fetch(:group, cluster.config.consumer_group)
       )
       write(request)
       read(Api::ConsumerMetadata::Response)
+    end
+
+    # Invokes the fetch offset API with the given requests
+    #
+    # @param [Array<Neptune::Api::OffsetFetch::Request>] requests Topics/partitions to look up offsets for
+    # @return [Neptune::Api::Offset::BatchResponse]
+    def consumer_offset(requests, options = {})
+      assert_valid_keys(options, :group)
+
+      request = Api::OffsetFetch::BatchRequest.new(
+        client_id: cluster.config.client_id,
+        consumer_group: options.fetch(:group, cluster.config.consumer_group),
+        requests: requests
+      )
+      write(request)
+      read(Api::OffsetFetch::BatchResponse)
     end
 
     # Close any open connections to the broker

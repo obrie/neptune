@@ -60,12 +60,21 @@ cluster.offset('topic1', 0, time: :latest)
 cluster.offset('topic1', 0, time: Time.now.to_i - 1000)
 
 cluster.coordinator
-cluster.coordinator(consumer_group: 'name')
+cluster.coordinator(group: 'name')
 cluster.coordinator!
-cluster.coordinator!(consumer_group: 'name')
+cluster.coordinator!(group: 'name')
+
+cluster.consumer_offset('topic1', 0)
+cluster.consumer_offset('topic1', 0, group: 'name')
+cluster.consumer_offset!('topic1', 0, group: 'name')
+
+cluster.batch(:consumer_offset, group: 'name') do
+  cluster.consumer_offset('topic1', 0)
+  cluster.consumer_offset('topic1', 1)
+end
 ```
 
 ## Requirements
 
 * Ruby 1.9.3 or higher
-* Kafka 0.8 or higher
+* Kafka 0.8.3 or higher

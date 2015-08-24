@@ -212,6 +212,29 @@ module Neptune
       nil
     end
 
+    # Looks up the latest offset for a conumser in the given topic / partition
+    # or raises an exception if the request fails
+    # @return [Neptune::OffsetFetch::BatchResponse]
+    def consumer_offset!(topic_name, partition_id, options = {}, &callback)
+      run_or_update_batch(:consumer_offset,
+        Api::OffsetFetch::Request.new(
+          topic_name: topic_name,
+          partition_id: partition_id
+        ),
+        callback, options
+      ).tap do |responses|
+        responses.error_code.raise if responses && !responses.success?
+      end
+    end
+
+    # Looks up the latest offset for a consumer in the given topic / partition
+    # @return [Neptune::OffsetFetch::BatchResponse]
+    def consumer_offset(topic_name, partition_id, options = {}, &callback)
+      consumer_offset!(topic_name, partition_id, options, &callback)
+    rescue Error
+      nil
+    end
+
     # Runs a batch of API calls
     # @yield [Neptune::Batch]
     # @return [Neptune::Batch]
