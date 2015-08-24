@@ -122,9 +122,7 @@ module Neptune
           messages: [Message.new(key: options.delete(:key), value: value)]
         ),
         callback, options
-      ).tap do |responses|
-        responses.error_code.raise if responses && !responses.success?
-      end
+      )
     end
 
     # Publish a value to a given topic
@@ -146,9 +144,7 @@ module Neptune
           max_bytes: options.delete(:max_bytes) || config.max_fetch_bytes
         ),
         callback, options
-      ).tap do |responses|
-        responses.error_code.raise if responses && !responses.success?
-      end
+      )
     end
 
     # Fetch messages from the given topic / partition
@@ -172,9 +168,7 @@ module Neptune
           time: options.delete(:time)
         ),
         callback, options
-      ).tap do |responses|
-        responses.error_code.raise if responses && !responses.success?
-      end
+      )
     end
 
     # Looks up valid offsets available within a given topic / partition
@@ -222,9 +216,7 @@ module Neptune
           partition_id: partition_id
         ),
         callback, options
-      ).tap do |responses|
-        responses.error_code.raise if responses && !responses.success?
-      end
+      )
     end
 
     # Looks up the latest offset for a consumer in the given topic / partition
@@ -304,7 +296,12 @@ module Neptune
       else
         batch = Api.get(api_name)::Batch.new(self, options)
         batch.add(request, callback)
-        batch.run
+        responses = batch.run
+        if responses.success?
+          responses
+        else
+          responses.error_code.raise
+        end
       end
     end
   end
