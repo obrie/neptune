@@ -72,7 +72,7 @@ module Neptune
             value = resource.read_kafka_attribute(attr, buffer)
             buffer.prepend(value)
           rescue => ex
-            raise EncodingError.new("#{ex.class}: #{ex.message}")
+            raise EncodingError.new("[#{name}##{attr}] #{ex.class}: #{ex.message}")
           end
         end
 
@@ -92,7 +92,7 @@ module Neptune
               # Just re-raise instead of producing a nested exception
               raise
             rescue => ex
-              raise DecodingError.new("#{ex.class}: #{ex.message}")
+              raise DecodingError.new("[#{name}##{attr}] #{ex.class}: #{ex.message}")
             end
           end
 
