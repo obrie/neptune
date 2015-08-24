@@ -63,6 +63,10 @@ module Neptune
     # Consumer-specific configurations
     #
 
+    # The name of the group uniquely identifying consumer operations
+    # @return [String]
+    attr_accessor :consumer_group
+
     # The maximum amount of time to block waiting if insufficient data is
     # available at the time the request is issued
     # @return [Fixnum]
@@ -95,6 +99,7 @@ module Neptune
         compression_codec: :none,
 
         # Consumer configurations
+        consumer_group: 'default',
         max_fetch_time: 100,
         min_fetch_bytes: 1,
         max_fetch_bytes: 1024 * 1024

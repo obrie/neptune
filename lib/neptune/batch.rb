@@ -29,8 +29,9 @@ module Neptune
     # @return [Hash<Neptune::Resource, Neptune::Resource>]
     attr_reader :responses_by_request
 
-    def initialize(cluster, &block) #:nodoc:
+    def initialize(cluster, options = {}, &block) #:nodoc:
       @cluster = cluster
+      @options = options
       @requests = []
       @responses_by_request = {}
       @callbacks = {}
@@ -102,7 +103,7 @@ module Neptune
     def process_broker(broker, requests)
       if broker
         # Send the requests to the broker
-        responses = broker.send(api_name, requests).responses
+        responses = broker.send(api_name, requests, @options).responses
       else
         # Create responses based on the lack of a broker
         responses = requests.map do |request|

@@ -1,7 +1,6 @@
 require 'neptune/batch'
 require 'neptune/broker_collection'
 require 'neptune/config'
-require 'neptune/helpers/assertions'
 require 'neptune/helpers/loggable'
 require 'neptune/topic_collection'
 require 'neptune/api'
@@ -9,7 +8,6 @@ require 'neptune/api'
 module Neptune
   # A group of brokers
   class Cluster
-    include Helpers::Assertions
     include Helpers::Loggable
 
     # List of brokers known to the cluster
@@ -116,14 +114,14 @@ module Neptune
     # Publish a value to a given topic or raise an exception if it fails
     # @return [Neptune::Produce::BatchResponse]
     def produce!(topic_name, value, options = {}, &callback)
-      assert_valid_keys(options, :key)
+      options = options.dup
 
       run_or_update_batch(:produce,
         Api::Produce::Request.new(
           topic_name: topic_name,
-          messages: [Message.new(key: options[:key], value: value)]
+          messages: [Message.new(key: options.delete(:key), value: value)]
         ),
-        callback
+        callback, options
       ).tap do |responses|
         responses.error_code.raise if responses && !responses.success?
       end
@@ -139,15 +137,15 @@ module Neptune
 
     # Fetch messages from the given topic / partition or raise an exception if it fails
     # @return [Neptune::Fetch::BatchResponse]
-    def fetch!(topic_name, partition_id, offset, &callback)
+    def fetch!(topic_name, partition_id, offset, options = {}, &callback)
       run_or_update_batch(:fetch,
         Api::Fetch::Request.new(
           topic_name: topic_name,
           partition_id: partition_id,
           offset: offset,
-          max_bytes: config[:max_fetch_bytes]
+          max_bytes: options.delete(:max_bytes) || config.max_fetch_bytes
         ),
-        callback
+        callback, options
       ).tap do |responses|
         responses.error_code.raise if responses && !responses.success?
       end
@@ -155,8 +153,8 @@ module Neptune
 
     # Fetch messages from the given topic / partition
     # @return [Neptune::Fetch::BatchResponse]
-    def fetch(topic_name, partition_id, offset, &callback)
-      fetch!(topic_name, partition_id, offset, &callback)
+    def fetch(topic_name, partition_id, offset, options = {}, &callback)
+      fetch!(topic_name, partition_id, offset, options, &callback)
     rescue Error
       nil
     end
@@ -165,16 +163,15 @@ module Neptune
     # raises an exception if the request fails
     # @return [Neptune::Offset::BatchResponse]
     def offset!(topic_name, partition_id, options = {}, &callback)
-      assert_valid_keys(options, :time)
       options = {time: :latest}.merge(options)
 
       run_or_update_batch(:offset,
         Api::Offset::Request.new(
           topic_name: topic_name,
           partition_id: partition_id,
-          time: options[:time]
+          time: options.delete(:time)
         ),
-        callback
+        callback, options
       ).tap do |responses|
         responses.error_code.raise if responses && !responses.success?
       end
@@ -183,9 +180,27 @@ module Neptune
     # Looks up valid offsets available within a given topic / partition
     # @return [Neptune::Offset::BatchResponse]
     def offset(topic_name, partition_id, options = {}, &callback)
-      offset!(topic_name, partition_id, options = {}, &callback)
+      offset!(topic_name, partition_id, options, &callback)
     rescue Error
       nil
+    end
+
+    # Looks up the broker acting as coordinator for offsets within the given
+    # consumer group or raises an exception of the coordinator isn't found.
+    # @return [Neptune::Broker]
+    def coordinator!(options = {})
+      brokers = self.brokers.to_a.shuffle
+
+      retriable(:consumer_metadata, attempts: brokers.count, backoff: 0) do |index|
+        metadata = brokers[index].consumer_metadata(options)
+
+        if metadata.success?
+          brokers << metadata.coordinator
+          brokers[metadata.coordinator.id]
+        else
+          metadata.error_code.raise
+        end
+      end
     end
 
     # Looks up the broker acting as coordinator for offsets within the given
@@ -197,35 +212,14 @@ module Neptune
       nil
     end
 
-    # Looks up the broker acting as coordinator for offsets within the given
-    # consumer group or raises an exception of the coordinator isn't found.
-    # @return [Neptune::Broker]
-    def coordinator!(options = {})
-      assert_valid_keys(options, :group)
-      options = {group: 'default'}.merge(options)
-
-      brokers = self.brokers.to_a.shuffle
-
-      retriable(:consumer_metadata, attempts: brokers.count, backoff: 0) do |index|
-        metadata = brokers[index].consumer_metadata(options[:group])
-
-        if metadata.success?
-          brokers << metadata.coordinator
-          brokers[metadata.coordinator.id]
-        else
-          metadata.error_code.raise
-        end
-      end
-    end
-
     # Runs a batch of API calls
     # @yield [Neptune::Batch]
     # @return [Neptune::Batch]
-    def batch(api_name)
+    def batch(api_name, options = {})
       if batch = @batches[api_name]
         raise(Error.new("A batch has already been started for #{api_name} API"))
       else
-        batch = @batches[api_name] = Api.get(api_name)::Batch.new(self)
+        batch = @batches[api_name] = Api.get(api_name)::Batch.new(self, options)
         begin
           yield
           batch.run
@@ -280,12 +274,12 @@ module Neptune
     # Starts or continues a request batch for the given API.  If a callback
     # is provided, then that block will be called.  Otherwise, a single
     # request will be added to the batch.
-    def run_or_update_batch(api_name, request, callback)
+    def run_or_update_batch(api_name, request, callback, options = {})
       if batch = @batches[api_name]
         batch.add(request, callback)
         nil
       else
-        batch = Api.get(api_name)::Batch.new(self)
+        batch = Api.get(api_name)::Batch.new(self, options)
         batch.add(request, callback)
         batch.run
       end

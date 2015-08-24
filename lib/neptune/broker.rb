@@ -1,9 +1,14 @@
 require 'neptune/connection'
+require 'neptune/helpers/assertions'
+require 'neptune/helpers/pretty_print'
 require 'neptune/resource'
 
 module Neptune
   # A node within a Kafka cluster
   class Broker < Resource
+    include Helpers::Assertions
+    include Helpers::PrettyPrint
+
     # The broker's unique identifier
     # @return [Fixnum]
     attribute :id, Int32
@@ -48,11 +53,13 @@ module Neptune
     #
     # @param [Array<String, Neptune::Api::Produce::Request>] requests Messages to send for each topic/partition
     # @return [Neptune::Api::Produce::BatchResponse]
-    def produce(requests)
+    def produce(requests, options = {})
+      assert_valid_keys(options, :required_acks, :ack_timeout)
+
       request = Api::Produce::BatchRequest.new(
         client_id: cluster.config.client_id,
-        required_acks: cluster.config.required_acks,
-        ack_timeout: cluster.config.ack_timeout,
+        required_acks: options.fetch(:required_acks, cluster.config.required_acks),
+        ack_timeout: options.fetch(:ack_timeout, cluster.config.ack_timeout),
         requests: requests
       )
 
@@ -75,7 +82,9 @@ module Neptune
     #
     # @param [Array<String>] topic_names The list of topics to fetch
     # @return [Neptune::Api::Metadata::Response]
-    def metadata(topic_names)
+    def metadata(topic_names, options = {})
+      assert_valid_keys(options)
+
       request = Api::Metadata::Request.new(
         client_id: cluster.config.client_id,
         topic_names: topic_names
@@ -88,11 +97,13 @@ module Neptune
     #
     # @param [Array<Neptune::Api::Fetch::Request>] requests Topics/partitions to fetch messages from
     # @return [Neptune::Api::Fetch::BatchResponse]
-    def fetch(requests)
+    def fetch(requests, options = {})
+      assert_valid_keys(options, :max_time, :min_bytes)
+
       request = Api::Fetch::BatchRequest.new(
         client_id: cluster.config.client_id,
-        max_wait_time: cluster.config.max_fetch_time,
-        min_bytes: cluster.config.min_fetch_bytes,
+        max_wait_time: options.fetch(:max_time, cluster.config.max_fetch_time),
+        min_bytes: options.fetch(:min_bytes, cluster.config.min_fetch_bytes),
         requests: requests
       )
       write(request)
@@ -103,7 +114,9 @@ module Neptune
     #
     # @param [Array<Neptune::Api::Offset::Request>] requests Topics/partitions to look up offsets for
     # @return [Neptune::Api::Offset::BatchResponse]
-    def offset(requests)
+    def offset(requests, options = {})
+      assert_valid_keys(options)
+
       request = Api::Offset::BatchRequest.new(
         client_id: cluster.config.client_id,
         requests: requests
@@ -116,8 +129,12 @@ module Neptune
     #
     # @param [String] consumer_group The group to fetch metadata for
     # @return [Neptune::Api::ConsumerMetadata::Response]
-    def consumer_metadata(consumer_group)
-      request = Api::ConsumerMetadata::Request.new(consumer_group: consumer_group)
+    def consumer_metadata(options = {})
+      assert_valid_keys(options, :consumer_group)
+
+      request = Api::ConsumerMetadata::Request.new(
+        consumer_group: options.fetch(:consumer_group, cluster.config.consumer_group)
+      )
       write(request)
       read(Api::ConsumerMetadata::Response)
     end
@@ -150,7 +167,7 @@ module Neptune
     end
 
     def pretty_print_ignore #:nodoc:
-      [:@cluster]
+      [:@cluster, :@connection]
     end
   end
 end
