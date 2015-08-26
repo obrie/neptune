@@ -8,6 +8,7 @@ require 'neptune/api/produce'
 module Neptune
   module Api
     NAMES = {
+      consumer_metadata: ConsumerMetadata,
       fetch: Fetch,
       metadata: Metadata,
       offset: Offset,
