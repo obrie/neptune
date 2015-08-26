@@ -206,7 +206,7 @@ module Neptune
       nil
     end
 
-    # Looks up the latest offset for a conumser in the given topic / partition
+    # Looks up the latest offset for a consumer in the given topic / partition
     # or raises an exception if the request fails
     # @return [Neptune::OffsetFetch::BatchResponse]
     def consumer_offset!(topic_name, partition_id, options = {}, &callback)
