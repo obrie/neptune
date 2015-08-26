@@ -87,13 +87,13 @@ module Neptune
     end
 
     # Fetch the consumer offset for this partition
-    # @return [Neptune::FetchOffset::BatchResponse]
+    # @return [Neptune::OffsetFetch::BatchResponse]
     def consumer_offset(options = {})
       cluster.consumer_offset(topic.name, id, options)
     end
 
     # Fetch the consumer offset for this partition or raise an exception if it fails
-    # @return [Neptune::FetchOffset::BatchResponse]
+    # @return [Neptune::OffsetFetch::BatchResponse]
     def consumer_offset!(options = {})
       cluster.consumer_offset!(topic.name, id, options)
     end
