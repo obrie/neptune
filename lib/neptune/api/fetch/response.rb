@@ -51,7 +51,7 @@ module Neptune
         # Decompresses the current messages
         # @return [Boolean] true, always
         def decompress(context)
-          type = self.class.attributes[:messages]
+          type = self.class.attributes[:messages][:type]
           decompressed_messages = []
 
           messages.each do |message|

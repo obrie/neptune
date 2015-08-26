@@ -23,8 +23,8 @@ module Neptune
 
       def initialize(type) #:nodoc:
         super(type)
-        @index_name, @index_type = self.type.attributes.detect {|attr, type| type.is_a?(Index)}
-        @index_type = @index_type.type
+        @index_name, * = self.type.attributes.detect {|attr, config| config[:type].is_a?(Index)}
+        @index_type = self.type.attributes[@index_name][:type].type
       end
 
       # Converts the given value to its Kafka format

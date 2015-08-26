@@ -43,7 +43,7 @@ module Neptune
       def attribute(name, type, &block)
         # Track the definition for usage later
         type = Types::String if type == ::String
-        attributes[name] = type
+        attributes[name] = {type: type}
 
         # Reader
         attr_reader(name)
@@ -147,7 +147,7 @@ module Neptune
     # Reads the value from the given attribute and converts it to Kafka format
     # @return [String]
     def read_kafka_attribute(attr, *args)
-      type = self.class.attributes[attr]
+      type = self.class.attributes[attr][:type]
       value = self[attr]
       type.to_kafka(value, *args)
     end
@@ -155,7 +155,7 @@ module Neptune
     # Writes to the given attribute from a Kafka buffer
     # @private
     def write_kafka_attribute(attr, buffer, context = {})
-      type = self.class.attributes[attr]
+      type = self.class.attributes[attr][:type]
       value = type.from_kafka(buffer, context)
       self[attr] = value unless value.nil?
     end
