@@ -242,6 +242,30 @@ module Neptune
       nil
     end
 
+
+    # Tracks the latest offset for a consumer in the given topic / partition
+    # or raises an exception if the request fails
+    # @return [Neptune::OffsetCommit::BatchResponse]
+    def offset_commit!(topic_name, partition_id, offset, options = {}, &callback)
+      run_or_update_batch(:offset_commit,
+        Api::OffsetCommit::Request.new(
+          topic_name: topic_name,
+          partition_id: partition_id,
+          offset: offset,
+          metadata: options.delete(:metadata)
+        ),
+        callback, options
+      )
+    end
+
+    # Tracks the latest offset for a consumer in the given topic / partition
+    # @return [Neptune::OffsetCommit::BatchResponse]
+    def offset_commit(topic_name, partition_id, offset, options = {}, &callback)
+      offset_commit!(topic_name, partition_id, offset, options, &callback)
+    rescue Error
+      nil
+    end
+
     # Runs a batch of API calls
     # @yield [Neptune::Batch]
     # @return [Neptune::Batch]

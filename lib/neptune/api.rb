@@ -2,6 +2,7 @@ require 'neptune/api/consumer_metadata'
 require 'neptune/api/fetch'
 require 'neptune/api/metadata'
 require 'neptune/api/offset'
+require 'neptune/api/offset_commit'
 require 'neptune/api/offset_fetch'
 require 'neptune/api/produce'
 
@@ -13,6 +14,7 @@ module Neptune
       metadata: Metadata,
       offset: Offset,
       offset_fetch: OffsetFetch,
+      offset_commit: OffsetCommit,
       produce: Produce
     }
 

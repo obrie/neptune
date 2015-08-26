@@ -8,8 +8,6 @@ Features currently implemented:
 * Produce
 * Compression
 * Fetch
-
-Upcoming features:
 * Offset management
 
 ## Background
@@ -76,6 +74,14 @@ cluster.offset_fetch!('topic1', 0, group: 'name')
 cluster.batch(:offset_fetch, group: 'name') do
   cluster.offset_fetch('topic1', 0)
   cluster.offset_fetch('topic1', 1)
+end
+
+cluster.offset_commit('topic1', 0, 1000)
+cluster.offset_commit('topic1', 0, 1000, group: 'name')
+cluster.offset_commit!('topic1', 0, 1000)
+
+cluster.batch(:offset_commit, group: 'name') do
+  cluster.offset_commit('topic1', 0, 1000)
 end
 ```
 

@@ -61,7 +61,6 @@ module Neptune
       assert_valid_keys(options, :required_acks, :ack_timeout)
 
       request = Api::Produce::BatchRequest.new(
-        client_id: config.client_id,
         required_acks: options.fetch(:required_acks, config.required_acks),
         ack_timeout: options.fetch(:ack_timeout, config.ack_timeout),
         requests: requests
@@ -90,7 +89,6 @@ module Neptune
       assert_valid_keys(options)
 
       request = Api::Metadata::Request.new(
-        client_id: config.client_id,
         topic_names: topic_names
       )
       write(request)
@@ -105,7 +103,6 @@ module Neptune
       assert_valid_keys(options, :max_time, :min_bytes)
 
       request = Api::Fetch::BatchRequest.new(
-        client_id: config.client_id,
         max_wait_time: options.fetch(:max_time, config.max_fetch_time),
         min_bytes: options.fetch(:min_bytes, config.min_fetch_bytes),
         requests: requests
@@ -122,7 +119,6 @@ module Neptune
       assert_valid_keys(options)
 
       request = Api::Offset::BatchRequest.new(
-        client_id: config.client_id,
         requests: requests
       )
       write(request)
@@ -151,12 +147,29 @@ module Neptune
       assert_valid_keys(options, :group)
 
       request = Api::OffsetFetch::BatchRequest.new(
-        client_id: config.client_id,
         consumer_group: options.fetch(:group, config.consumer_group),
         requests: requests
       )
       write(request)
       read(Api::OffsetFetch::BatchResponse)
+    end
+
+    # Invokes the offset commit API with the given requests
+    #
+    # @param [Array<Neptune::Api::OffsetCommit::Request>] requests Topics/partitions to commit offsets for
+    # @return [Neptune::Api::OffsetCommit::BatchResponse]
+    def offset_commit(requests, options = {})
+      assert_valid_keys(options, :group, :group_generation_id, :consumer_id, :retention_time)
+
+      request = Api::OffsetCommit::BatchRequest.new(
+        consumer_group: options.fetch(:group, cluster.config.consumer_group),
+        consumer_group_generation_id: options.fetch(:group_generation_id, cluster.config.consumer_group_generation_id),
+        consumer_id: options.fetch(:consumer_id, cluster.config.consumer_id),
+        retention_time: options.fetch(:retention_time, cluster.config.offset_retention_time),
+        requests: requests
+      )
+      write(request)
+      read(Api::OffsetCommit::BatchResponse)
     end
 
     # Close any open connections to the broker

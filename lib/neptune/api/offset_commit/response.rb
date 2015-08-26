@@ -2,7 +2,7 @@ require 'neptune/resource'
 
 module Neptune
   module Api
-    module OffsetFetch
+    module OffsetCommit
       class Response < Resource
         # The topic this response corresponds to
         # @return [String]
@@ -11,14 +11,6 @@ module Neptune
         # The partition this response corresponds to
         # @return [Fixnum]
         attribute :partition_id, Int32
-
-        # The offsets requested
-        # @return [Fixnum]
-        attribute :offset, Int64
-
-        # Arbitrary data that was associated with the offset when it was committed
-        # @return [String]
-        attribute :metadata, String
 
         # The error from this partition
         # @return [Neptune::ErrorCode]

@@ -98,6 +98,18 @@ module Neptune
       cluster.offset_fetch!(topic.name, id, options)
     end
 
+    # Tracks the latest consumer offset for this partition
+    # @return [Neptune::OffsetCommit::BatchResponse]
+    def offset_commit(offset, options = {})
+      cluster.offset_commit(topic.name, id, offset, options)
+    end
+
+    # Tracks the latest consumer offset for this partition or raise an exception if it fails
+    # @return [Neptune::OffsetCommit::BatchResponse]
+    def offset_commit!(offset, options = {})
+      cluster.offset_commit!(topic.name, id, offset, options)
+    end
+
     private
     def cluster #:nodoc:
       topic.cluster

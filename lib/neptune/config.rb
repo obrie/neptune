@@ -67,6 +67,18 @@ module Neptune
     # @return [String]
     attr_accessor :consumer_group
 
+    # The unique id identifyingg the generation of consumers
+    # @return [Fixnum]
+    attr_accessor :consumer_group_generation_id
+
+    # The unique identifier for the consumer (for debugging purposes)
+    # @return [String]
+    attr_accessor :consumer_id
+
+    # The amount of time to keep offsets around (in ms)
+    # @return [Fixnum]
+    attr_accessor :offset_retention_time
+
     # The maximum amount of time to block waiting if insufficient data is
     # available at the time the request is issued
     # @return [Fixnum]
@@ -107,7 +119,10 @@ module Neptune
         compression_codec: :none,
 
         # Consumer configurations
-        consumer_group: 'default',
+        consumer_group: '',
+        consumer_group_generation_id: -1,
+        consumer_id: '',
+        offset_retention_time: -1,
 
         max_fetch_time: 100,
         min_fetch_bytes: 1,
@@ -122,6 +137,7 @@ module Neptune
         fetch: 0,
         metadata: 0,
         offset: 0,
+        offset_commit: 1,
         offset_fetch: 1,
         produce: 0
       }.merge(options[:api_versions])
