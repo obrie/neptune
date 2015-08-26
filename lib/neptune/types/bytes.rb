@@ -16,7 +16,7 @@ module Neptune
 
       # Converts from the Kafka data in the current buffer's position
       # @return [Array<Byte>]
-      def self.from_kafka(buffer)
+      def self.from_kafka(buffer, *)
         length = Int32.from_kafka(buffer)
         length == -1 ? nil : buffer.read(length)
       end

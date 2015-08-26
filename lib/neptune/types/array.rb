@@ -38,9 +38,9 @@ module Neptune
 
       # Converts from the Kafka data in the current buffer's position
       # @return [Array]
-      def from_kafka(buffer)
+      def from_kafka(buffer, *args)
         size = Int32.from_kafka(buffer)
-        size.times.map { type.from_kafka(buffer) }
+        size.times.map { type.from_kafka(buffer, *args) }
       end
     end
 
@@ -48,11 +48,11 @@ module Neptune
     class SizeBoundArrayOf < ArrayOf
       # Converts the given value to its Kafka format
       # @return [String]
-      def to_kafka(values, *)
+      def to_kafka(values, *args)
         buffer = Buffer.new
 
         # Add individual elements
-        values.each {|value| buffer.concat(type.to_kafka(value))}
+        values.each {|value| buffer.concat(type.to_kafka(value, *args))}
 
         # Add bytesize
         buffer.prepend(Int32.to_kafka(buffer.size))
@@ -62,7 +62,7 @@ module Neptune
 
       # Converts from the Kafka data in the current buffer's position
       # @return [Array]
-      def from_kafka(buffer)
+      def from_kafka(buffer, *args)
         # Validate enough bytes to read size
         throw :truncated if buffer.bytes_remaining < 4
 
@@ -73,7 +73,7 @@ module Neptune
         array_buffer = Buffer.new(buffer.read(size))
 
         values = []
-        while !array_buffer.eof? && (value = type.from_kafka(array_buffer))
+        while !array_buffer.eof? && (value = type.from_kafka(array_buffer, *args))
           values << value
         end
         values

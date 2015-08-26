@@ -9,7 +9,8 @@ module Neptune
     class Checksum
       # Converts the given value to its Kafka format
       # @return [String]
-      def self.to_kafka(value, buffer)
+      def self.to_kafka(value, context)
+        buffer = context.fetch(:buffer)
         checksum = Zlib.crc32(buffer.peek(buffer.size))
         result = Int32.to_kafka(checksum)
         result.prepend(Int32.to_kafka(buffer.size + result.size))
@@ -17,7 +18,7 @@ module Neptune
 
       # Converts from the Kafka data in the current buffer's position
       # @return [Fixnum]
-      def self.from_kafka(buffer)
+      def self.from_kafka(buffer, *)
         # Validate enough bytes to read size / checksum
         throw :halt if buffer.bytes_remaining < 8
 

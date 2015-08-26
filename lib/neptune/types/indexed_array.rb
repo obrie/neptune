@@ -49,10 +49,10 @@ module Neptune
 
       # Converts from the Kafka data in the current buffer's position
       # @return [Hash]
-      def from_kafka(buffer)
+      def from_kafka(buffer, *args)
         size = Int32.from_kafka(buffer)
         size.times.each_with_object([]) do |_, values|
-          index_value = index_type.from_kafka(buffer)
+          index_value = index_type.from_kafka(buffer, *args)
 
           # Read the values array associated with the index
           results = super

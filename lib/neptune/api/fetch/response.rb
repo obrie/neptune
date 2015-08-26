@@ -27,14 +27,21 @@ module Neptune
 
         delegate [:success?, :retriable?] => :error_code
 
-        # Sets the underlying messages associated with this partition, decompressing
-        # any that might have been previously compressed.
-        def messages=(messages)
-          @messages = messages
-          decompress if compressed?
+        private
+        # Writes to the given attribute from a Kafka buffer
+        # @private
+        def write_kafka_attribute(attr, buffer, context = {})
+          result = super
+
+          # Set the underlying messages associated with this partition,
+          # decompressing any that might have been previously compressed.
+          if attr == :messages
+            decompress(context) if compressed?
+          end
+
+          result
         end
 
-        private
         # Whether any of the underlying messages are compressed
         # @return [Boolean]
         def compressed?
@@ -43,7 +50,7 @@ module Neptune
 
         # Decompresses the current messages
         # @return [Boolean] true, always
-        def decompress
+        def decompress(context)
           type = self.class.attributes[:messages]
           decompressed_messages = []
 
@@ -51,8 +58,8 @@ module Neptune
             if message.compressed?
               # Inflate the underlying messages
               buffer = Buffer.new(message.decompressed_value)
-              buffer.prepend(Types::Size.to_kafka(nil, buffer))
-              decompressed_messages.concat(type.from_kafka(buffer))
+              buffer.prepend(Types::Size.to_kafka(nil, buffer: buffer))
+              decompressed_messages.concat(type.from_kafka(buffer, context))
             else
               decompressed_messages << message
             end

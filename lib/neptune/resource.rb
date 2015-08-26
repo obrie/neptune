@@ -62,14 +62,14 @@ module Neptune
 
       # Converts the given value to its Kafka format
       # @return [String]
-      def to_kafka(resource, *)
+      def to_kafka(resource, context = {})
         buffer = Buffer.new
 
         # Process in reverse order so that the buffer has all the necessary data
         # when the checksum / size is being calculated (if applicable)
         attributes.keys.reverse.each do |attr|
           begin
-            value = resource.read_kafka_attribute(attr, buffer)
+            value = resource.read_kafka_attribute(attr, context.merge(buffer: buffer))
             buffer.prepend(value)
           rescue => ex
             raise EncodingError.new("[#{name}##{attr}] #{ex.class}: #{ex.message}")
@@ -81,13 +81,13 @@ module Neptune
 
       # Converts from the Kafka data in the current buffer's position
       # @return [Object]
-      def from_kafka(buffer)
+      def from_kafka(buffer, context = {})
         catch(:halt) do
           resource = new
 
-          attributes.each do |attr, type|
+          attributes.each do |attr, *|
             begin
-              resource.write_kafka_attribute(attr, buffer)
+              resource.write_kafka_attribute(attr, buffer, context)
             rescue DecodingError
               # Just re-raise instead of producing a nested exception
               raise
@@ -127,7 +127,7 @@ module Neptune
     # The attributes defined for this resource
     # @return [Hash]
     def attributes
-      self.class.attributes.each_with_object({}) do |(attr, type), attributes|
+      self.class.attributes.each_with_object({}) do |(attr, *), attributes|
         attributes[attr] = self[attr]
       end
     end
@@ -154,16 +154,16 @@ module Neptune
 
     # Writes to the given attribute from a Kafka buffer
     # @private
-    def write_kafka_attribute(attr, buffer)
+    def write_kafka_attribute(attr, buffer, context = {})
       type = self.class.attributes[attr]
-      value = type.from_kafka(buffer)
+      value = type.from_kafka(buffer, context)
       self[attr] = value unless value.nil?
     end
 
     # Converts this class to its Kafka data representation
     # @return [Neptune::Buffer]
-    def to_kafka
-      self.class.to_kafka(self)
+    def to_kafka(context = {})
+      self.class.to_kafka(self, context)
     end
   end
 end

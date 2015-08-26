@@ -31,7 +31,7 @@ module Neptune
 
     # Converts from the Kafka data in the current buffer's position
     # @return [Fixnum]
-    def self.from_kafka(buffer)
+    def self.from_kafka(buffer, *)
       new(Types::Int16.from_kafka(buffer))
     end
 

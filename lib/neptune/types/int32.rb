@@ -10,7 +10,7 @@ module Neptune
 
       # Converts from the Kafka data in the current buffer's position
       # @return [Fixnum]
-      def self.from_kafka(buffer)
+      def self.from_kafka(buffer, *)
         buffer.read(4).unpack('l>').first
       end
     end
