@@ -24,10 +24,5 @@ module Neptune
     # used when logging errors, monitoring aggregates, etc.
     # @return [String]
     attribute :client_id, String
-
-    def initialize(*) #:nodoc:
-      super
-      self.api_version ||= 0
-    end
   end
 end

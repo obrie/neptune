@@ -2,6 +2,7 @@ require 'forwardable'
 require 'pp'
 require 'neptune/errors'
 require 'neptune/error_code'
+require 'neptune/helpers/assertions'
 require 'neptune/helpers/pretty_print'
 require 'neptune/types'
 
@@ -16,6 +17,18 @@ module Neptune
         rescue NameError
           super
         end
+      end
+
+      # The base module for this batch's API
+      # @return [Module]
+      def api
+        @api ||= Api.for_class(self)
+      end
+
+      # The name for this batch's API
+      # @return [String]
+      def api_name
+        @api_name ||= Api.name_for(api)
       end
 
       # The attributes defined for the resource
@@ -33,6 +46,15 @@ module Neptune
       #   # Define a "name" attribute
       #   attribute :name, String
       #   
+      #   # Define a "name" attribute for version 1+
+      #   attribute :name, String, version: 1
+      #   
+      #   # Define a "name" attribute for versions 0 only
+      #   attribute :name, String, version: 0..0
+      #   
+      #   # Define a "name" attribute for versions 0 - 2
+      #   attribute :name, String, version: 0..2
+      #   
       #   # Define a "brokers" attribute that runs a block after the attribute has been set
       #   attribute :brokers, [Broker] do
       #     @brokers_by_id = ...
@@ -40,10 +62,14 @@ module Neptune
       # 
       # @!macro [attach] attribute
       #   @!attribute [r] $1
-      def attribute(name, type, &block)
+      def attribute(name, type, options = {}, &block)
+        assert_valid_keys(options, :version)
+        options = {version: 0}.merge(options)
+
         # Track the definition for usage later
         type = Types::String if type == ::String
-        attributes[name] = {type: type}
+        options.merge!(type: type)
+        attributes[name] = options
 
         # Reader
         attr_reader(name)
@@ -63,11 +89,14 @@ module Neptune
       # Converts the given value to its Kafka format
       # @return [String]
       def to_kafka(resource, context = {})
+        context[:version] ||= 0
         buffer = Buffer.new
 
         # Process in reverse order so that the buffer has all the necessary data
         # when the checksum / size is being calculated (if applicable)
         attributes.keys.reverse.each do |attr|
+          next unless attribute?(attr, context[:version])
+
           begin
             value = resource.read_kafka_attribute(attr, context.merge(buffer: buffer))
             buffer.prepend(value)
@@ -82,10 +111,14 @@ module Neptune
       # Converts from the Kafka data in the current buffer's position
       # @return [Object]
       def from_kafka(buffer, context = {})
+        context[:version] ||= 0
+
         catch(:halt) do
           resource = new
 
           attributes.each do |attr, *|
+            next unless attribute?(attr, context[:version])
+
             begin
               resource.write_kafka_attribute(attr, buffer, context)
             rescue DecodingError
@@ -99,10 +132,27 @@ module Neptune
           resource
         end
       end
+
+      private
+      # Whether the given attribute is applicable within a target API version #
+      # @return [Boolean]
+      def attribute?(attr, target_version)
+        version = attributes[attr][:version]
+
+        case version
+        when Fixnum
+          version <= target_version
+        when Range
+          version.include?(target_version)
+        else
+          raise ArgumentError, "Invalid version for #{attr}: #{version.inspect}"
+        end
+      end
     end
 
     include Helpers::PrettyPrint
     extend Forwardable
+    extend Helpers::Assertions
 
     # Initializes this resources with the given attributes.  This will continue
     # to call the superclass's constructor with any additional arguments that

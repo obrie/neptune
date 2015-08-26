@@ -81,6 +81,14 @@ module Neptune
     # @return [Fixnum]
     attr_accessor :max_fetch_bytes
 
+    #
+    # API version configurations
+    #
+
+    # The versions to use for each available API
+    # @return [Hash<Symbol, Fixnum>]
+    attr_accessor :api_versions
+
     def initialize(options = {}) #:nodoc:
       options = {
         client_id: 'neptune',
@@ -100,10 +108,24 @@ module Neptune
 
         # Consumer configurations
         consumer_group: 'default',
+
         max_fetch_time: 100,
         min_fetch_bytes: 1,
-        max_fetch_bytes: 1024 * 1024
-       }.merge(options)
+        max_fetch_bytes: 1024 * 1024,
+
+        api_versions: {}
+      }.merge(options)
+
+      # API configurations
+      options[:api_versions] = {
+        consumer_metadata: 0,
+        fetch: 0,
+        metadata: 0,
+        offset: 0,
+        offset_fetch: 1,
+        produce: 0
+      }.merge(options[:api_versions])
+
       options.each {|option, value| send("#{option}=", value)}
     end
 
@@ -117,6 +139,12 @@ module Neptune
     # @return [Hash]
     def slice(*keys)
       keys.each_with_object({}) {|key, h| h[key] = self[key]}
+    end
+
+    # Looks up the version configured for the given API
+    # @return [Fixnum]
+    def api_version(api_name)
+      api_versions.fetch(api_name)
     end
   end
 end

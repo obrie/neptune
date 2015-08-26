@@ -174,16 +174,17 @@ module Neptune
     # Reads a response from the connection
     def read(response_class)
       connection.verify
-      response_class.from_kafka(connection.read)
+      response_class.from_kafka(connection.read, version: config.api_version(response_class.api_name))
     end
 
     # Writes the given request to the connection
     def write(request)
       request.client_id = config.client_id
       request.correlation_id = next_correlation_id
+      request.api_version = config.api_version(request.class.api_name)
 
       connection.verify
-      connection.write(request.to_kafka)
+      connection.write(request.to_kafka(version: request.api_version))
     end
 
     def pretty_print_ignore #:nodoc:
