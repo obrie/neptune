@@ -59,6 +59,11 @@ cluster.offset('topic1', 0, time: :earliest)
 cluster.offset('topic1', 0, time: :latest)
 cluster.offset('topic1', 0, time: Time.now.to_i - 1000)
 
+cluster.batch(:offset) do
+  cluster.offset('topic1', 0, time: :earliest)
+  cluster.offset('topic1', 0, time: :latest)
+end
+
 cluster.coordinator
 cluster.coordinator(group: 'name')
 cluster.coordinator!
@@ -77,4 +82,4 @@ end
 ## Requirements
 
 * Ruby 1.9.3 or higher
-* Kafka 0.8.3 or higher
+* Kafka 0.8 or higher
