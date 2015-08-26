@@ -18,12 +18,6 @@ module Neptune
         end
 
         delegate [:each, :<<] => :responses
-
-        # The value of the offset in the first response of this batch
-        # @return [Fixnum]
-        def value
-          first.value
-        end
       end
     end
   end

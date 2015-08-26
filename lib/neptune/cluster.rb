@@ -112,7 +112,7 @@ module Neptune
     end
 
     # Publish a value to a given topic or raise an exception if it fails
-    # @return [Neptune::Produce::BatchResponse]
+    # @return [Neptune::Produce::Response]
     def produce!(topic_name, value, options = {}, &callback)
       options = options.dup
 
@@ -126,7 +126,7 @@ module Neptune
     end
 
     # Publish a value to a given topic
-    # @return [Neptune::Produce::BatchResponse]
+    # @return [Neptune::Produce::Response]
     def produce(topic_name, value, options = {}, &callback)
       produce!(topic_name, value, options, &callback)
     rescue Error
@@ -134,7 +134,7 @@ module Neptune
     end
 
     # Fetch messages from the given topic / partition or raise an exception if it fails
-    # @return [Neptune::Fetch::BatchResponse]
+    # @return [Neptune::Fetch::Response]
     def fetch!(topic_name, partition_id, offset, options = {}, &callback)
       run_or_update_batch(:fetch,
         Api::Fetch::Request.new(
@@ -148,7 +148,7 @@ module Neptune
     end
 
     # Fetch messages from the given topic / partition
-    # @return [Neptune::Fetch::BatchResponse]
+    # @return [Neptune::Fetch::Response]
     def fetch(topic_name, partition_id, offset, options = {}, &callback)
       fetch!(topic_name, partition_id, offset, options, &callback)
     rescue Error
@@ -157,7 +157,7 @@ module Neptune
 
     # Looks up valid offsets available within a given topic / partition or
     # raises an exception if the request fails
-    # @return [Neptune::Offset::BatchResponse]
+    # @return [Neptune::Offset::Response]
     def offset!(topic_name, partition_id, options = {}, &callback)
       options = {time: :latest}.merge(options)
 
@@ -172,7 +172,7 @@ module Neptune
     end
 
     # Looks up valid offsets available within a given topic / partition
-    # @return [Neptune::Offset::BatchResponse]
+    # @return [Neptune::Offset::Response]
     def offset(topic_name, partition_id, options = {}, &callback)
       offset!(topic_name, partition_id, options, &callback)
     rescue Error
@@ -223,7 +223,7 @@ module Neptune
 
     # Looks up the latest offset for a consumer in the given topic / partition
     # or raises an exception if the request fails
-    # @return [Neptune::OffsetFetch::BatchResponse]
+    # @return [Neptune::OffsetFetch::Response]
     def offset_fetch!(topic_name, partition_id, options = {}, &callback)
       run_or_update_batch(:offset_fetch,
         Api::OffsetFetch::Request.new(
@@ -235,7 +235,7 @@ module Neptune
     end
 
     # Looks up the latest offset for a consumer in the given topic / partition
-    # @return [Neptune::OffsetFetch::BatchResponse]
+    # @return [Neptune::OffsetFetch::Response]
     def offset_fetch(topic_name, partition_id, options = {}, &callback)
       offset_fetch!(topic_name, partition_id, options, &callback)
     rescue Error
@@ -245,7 +245,7 @@ module Neptune
 
     # Tracks the latest offset for a consumer in the given topic / partition
     # or raises an exception if the request fails
-    # @return [Neptune::OffsetCommit::BatchResponse]
+    # @return [Neptune::OffsetCommit::Response]
     def offset_commit!(topic_name, partition_id, offset, options = {}, &callback)
       run_or_update_batch(:offset_commit,
         Api::OffsetCommit::Request.new(
@@ -259,7 +259,7 @@ module Neptune
     end
 
     # Tracks the latest offset for a consumer in the given topic / partition
-    # @return [Neptune::OffsetCommit::BatchResponse]
+    # @return [Neptune::OffsetCommit::Response]
     def offset_commit(topic_name, partition_id, offset, options = {}, &callback)
       offset_commit!(topic_name, partition_id, offset, options, &callback)
     rescue Error
@@ -335,11 +335,11 @@ module Neptune
       else
         batch = Api.get(api_name)::Batch.new(self, options)
         batch.add(request, callback)
-        responses = batch.run
-        if responses.success?
-          responses
+        result = batch.run
+        if result.success?
+          result.responses.first
         else
-          responses.error_code.raise
+          result.error_code.raise
         end
       end
     end
