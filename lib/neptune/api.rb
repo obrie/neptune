@@ -15,16 +15,24 @@ module Neptune
       produce: Produce
     }
 
-    # Look up the Api module with the given name
-    # @return [Module]
-    def self.get(name)
-      NAMES.fetch(name)
-    end
+    class << self
+      # Look up the Api module with the given name
+      # @return [Module]
+      def get(name)
+        NAMES.fetch(name)
+      end
 
-    # Look up the Api name for the given module
-    # @return [Symbol]
-    def self.name_for(api)
-      NAMES.key(api) || raise(KeyError.new("key not found: #{api.name}"))
+      # Look up the Api module that the given class belongs to
+      # @return [Module]
+      def for_class(klass)
+        const_get(klass.name.match(/^Neptune::Api::([^:]+)/)[1])
+      end
+
+      # Look up the Api name for the given module
+      # @return [Symbol]
+      def name_for(api)
+        NAMES.key(api) || raise(KeyError.new("key not found: #{api.name}"))
+      end
     end
   end
 end

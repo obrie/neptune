@@ -12,7 +12,7 @@ module Neptune
     # The base module for this batch's API
     # @return [Module]
     def self.api
-      @api ||= Neptune::Api.const_get(name.match(/([^:]+)::Batch$/)[1])
+      @api ||= Api.for_class(self)
     end
 
     # The name for this batch's API
