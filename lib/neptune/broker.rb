@@ -1,3 +1,4 @@
+require 'forwardable'
 require 'neptune/connection'
 require 'neptune/helpers/assertions'
 require 'neptune/helpers/pretty_print'
@@ -8,6 +9,7 @@ module Neptune
   class Broker < Resource
     include Helpers::Assertions
     include Helpers::PrettyPrint
+    extend Forwardable
 
     # The broker's unique identifier
     # @return [Fixnum]
@@ -25,6 +27,8 @@ module Neptune
     # @return [Neptune::Cluster]
     attr_accessor :cluster
 
+    delegate [:config] => :cluster
+
     def initialize(*) #:nodoc:
       super
       @correlation_id = 0
@@ -33,7 +37,7 @@ module Neptune
     # The connection being used by the broker
     # @return [Neptune::Connection]
     def connection
-      @connection ||= Connection.new(host, port, cluster.config)
+      @connection ||= Connection.new(host, port, config)
     end
 
     # The URI for this broker
@@ -57,9 +61,9 @@ module Neptune
       assert_valid_keys(options, :required_acks, :ack_timeout)
 
       request = Api::Produce::BatchRequest.new(
-        client_id: cluster.config.client_id,
-        required_acks: options.fetch(:required_acks, cluster.config.required_acks),
-        ack_timeout: options.fetch(:ack_timeout, cluster.config.ack_timeout),
+        client_id: config.client_id,
+        required_acks: options.fetch(:required_acks, config.required_acks),
+        ack_timeout: options.fetch(:ack_timeout, config.ack_timeout),
         requests: requests
       )
 
@@ -86,7 +90,7 @@ module Neptune
       assert_valid_keys(options)
 
       request = Api::Metadata::Request.new(
-        client_id: cluster.config.client_id,
+        client_id: config.client_id,
         topic_names: topic_names
       )
       write(request)
@@ -101,9 +105,9 @@ module Neptune
       assert_valid_keys(options, :max_time, :min_bytes)
 
       request = Api::Fetch::BatchRequest.new(
-        client_id: cluster.config.client_id,
-        max_wait_time: options.fetch(:max_time, cluster.config.max_fetch_time),
-        min_bytes: options.fetch(:min_bytes, cluster.config.min_fetch_bytes),
+        client_id: config.client_id,
+        max_wait_time: options.fetch(:max_time, config.max_fetch_time),
+        min_bytes: options.fetch(:min_bytes, config.min_fetch_bytes),
         requests: requests
       )
       write(request)
@@ -118,7 +122,7 @@ module Neptune
       assert_valid_keys(options)
 
       request = Api::Offset::BatchRequest.new(
-        client_id: cluster.config.client_id,
+        client_id: config.client_id,
         requests: requests
       )
       write(request)
@@ -133,7 +137,7 @@ module Neptune
       assert_valid_keys(options, :group)
 
       request = Api::ConsumerMetadata::Request.new(
-        consumer_group: options.fetch(:group, cluster.config.consumer_group)
+        consumer_group: options.fetch(:group, config.consumer_group)
       )
       write(request)
       read(Api::ConsumerMetadata::Response)
@@ -147,8 +151,8 @@ module Neptune
       assert_valid_keys(options, :group)
 
       request = Api::OffsetFetch::BatchRequest.new(
-        client_id: cluster.config.client_id,
-        consumer_group: options.fetch(:group, cluster.config.consumer_group),
+        client_id: config.client_id,
+        consumer_group: options.fetch(:group, config.consumer_group),
         requests: requests
       )
       write(request)
@@ -175,7 +179,7 @@ module Neptune
 
     # Writes the given request to the connection
     def write(request)
-      request.client_id = cluster.config.client_id
+      request.client_id = config.client_id
       request.correlation_id = next_correlation_id
 
       connection.verify
