@@ -139,11 +139,11 @@ module Neptune
       read(Api::ConsumerMetadata::Response)
     end
 
-    # Invokes the fetch offset API with the given requests
+    # Invokes the offset fetch API with the given requests
     #
     # @param [Array<Neptune::Api::OffsetFetch::Request>] requests Topics/partitions to look up offsets for
     # @return [Neptune::Api::OffsetFetch::BatchResponse]
-    def consumer_offset(requests, options = {})
+    def offset_fetch(requests, options = {})
       assert_valid_keys(options, :group)
 
       request = Api::OffsetFetch::BatchRequest.new(

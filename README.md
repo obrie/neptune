@@ -69,13 +69,13 @@ cluster.coordinator(group: 'name')
 cluster.coordinator!
 cluster.coordinator!(group: 'name')
 
-cluster.consumer_offset('topic1', 0)
-cluster.consumer_offset('topic1', 0, group: 'name')
-cluster.consumer_offset!('topic1', 0, group: 'name')
+cluster.offset_fetch('topic1', 0)
+cluster.offset_fetch('topic1', 0, group: 'name')
+cluster.offset_fetch!('topic1', 0, group: 'name')
 
-cluster.batch(:consumer_offset, group: 'name') do
-  cluster.consumer_offset('topic1', 0)
-  cluster.consumer_offset('topic1', 1)
+cluster.batch(:offset_fetch, group: 'name') do
+  cluster.offset_fetch('topic1', 0)
+  cluster.offset_fetch('topic1', 1)
 end
 ```
 

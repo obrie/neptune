@@ -179,22 +179,37 @@ module Neptune
       nil
     end
 
-    # Looks up the broker acting as coordinator for offsets within the given
-    # consumer group or raises an exception of the coordinator isn't found.
-    # @return [Neptune::Broker]
-    def coordinator!(options = {})
+    # Looks up the metadata associated with a consumer group or raise an
+    # exception if the metadata is not found
+    # @return [Neptune::ConsumerMetadata::Response]
+    def consumer_metadata!(options = {})
       brokers = self.brokers.to_a.shuffle
 
       retriable(:consumer_metadata, attempts: brokers.count, backoff: 0) do |index|
         metadata = brokers[index].consumer_metadata(options)
 
         if metadata.success?
-          brokers << metadata.coordinator
-          brokers[metadata.coordinator.id]
+          self.brokers << metadata.coordinator
+          metadata
         else
           metadata.error_code.raise
         end
       end
+    end
+
+    # Looks up the metadata associated with a consumer group
+    # @return [Neptune::ConsumerMetadata::Response]
+    def consumer_metadata(options = {})
+      consumer_metadata!(options)
+    rescue Error
+      nil
+    end
+
+    # Looks up the broker acting as coordinator for offsets within the given
+    # consumer group or raises an exception of the coordinator isn't found.
+    # @return [Neptune::Broker]
+    def coordinator!(options = {})
+      brokers[consumer_metadata!(options).coordinator.id]
     end
 
     # Looks up the broker acting as coordinator for offsets within the given
@@ -209,8 +224,8 @@ module Neptune
     # Looks up the latest offset for a consumer in the given topic / partition
     # or raises an exception if the request fails
     # @return [Neptune::OffsetFetch::BatchResponse]
-    def consumer_offset!(topic_name, partition_id, options = {}, &callback)
-      run_or_update_batch(:consumer_offset,
+    def offset_fetch!(topic_name, partition_id, options = {}, &callback)
+      run_or_update_batch(:offset_fetch,
         Api::OffsetFetch::Request.new(
           topic_name: topic_name,
           partition_id: partition_id
@@ -221,8 +236,8 @@ module Neptune
 
     # Looks up the latest offset for a consumer in the given topic / partition
     # @return [Neptune::OffsetFetch::BatchResponse]
-    def consumer_offset(topic_name, partition_id, options = {}, &callback)
-      consumer_offset!(topic_name, partition_id, options, &callback)
+    def offset_fetch(topic_name, partition_id, options = {}, &callback)
+      offset_fetch!(topic_name, partition_id, options, &callback)
     rescue Error
       nil
     end

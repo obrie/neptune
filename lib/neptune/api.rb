@@ -11,7 +11,7 @@ module Neptune
       fetch: Fetch,
       metadata: Metadata,
       offset: Offset,
-      consumer_offset: OffsetFetch,
+      offset_fetch: OffsetFetch,
       produce: Produce
     }
 
