@@ -51,13 +51,7 @@ module Neptune
         refresh!([name])
       end
 
-      @topics[name].tap do |topic|
-        unless topic.exists?
-          # Remove knowledge of the topic since it doesn't exist
-          @topics.delete(name)
-          topic.error_code.raise
-        end
-      end
+      @topics[name] || ErrorCode.find_by_name(:unknown_topic_or_partition).raise
     end
 
     # Looks up the topic with the given name.  Missing topic metadata will be
@@ -69,6 +63,22 @@ module Neptune
       nil
     end
 
+    # Looks up all topics that are known in the cluster
+    # @return [Array<Neptune::Topic>]
+    def known_topics
+      known_topics!
+    rescue Error
+      []
+    end
+
+    # Looks up all topics that are known in the cluster or raises an exception
+    # if the lookup fails
+    # @return [Array<Neptune::Topic>]
+    def known_topics!
+      refresh!
+      self.topics.to_a
+    end
+
     # Whether a refresh of the cluster metadata is needed
     # @return [Boolean]
     def refresh?
@@ -78,7 +88,7 @@ module Neptune
     # Refreshes the metadata associated with the given topics or raise an exception
     # if it fails
     # @return [Boolean]
-    def refresh!(topic_names)
+    def refresh!(topic_names = [])
       # Add already-known topics
       topic_names += topics.map(&:name)
       topic_names.uniq!
@@ -89,7 +99,7 @@ module Neptune
       # Attempt a refresh on the first available broker
       retriable(:metadata, attempts: brokers.count, backoff: 0) do |index|
         metadata = brokers[index].metadata(topic_names)
-        metadata.topics.each {|topic| topics << topic}
+        metadata.topics.each {|topic| topics << topic if topic.exists?}
         metadata.brokers.each {|broker| self.brokers << broker}
 
         @last_refreshed_at = Time.now

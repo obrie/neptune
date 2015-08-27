@@ -27,7 +27,11 @@ implementation has changed vastly.
 require 'neptune'
 
 cluster = Neptune::Cluster.new(['localhost:9092'], client_id: 'my_test_producer')
+
 cluster.topic('topic1')
+
+cluster.known_topics
+cluster.known_topics!
 
 cluster.produce('topic1', 'value1')
 cluster.produce('topic1', 'value1', required_acks: 1, ack_timeout: 1000)
@@ -84,6 +88,12 @@ cluster.batch(:offset_commit, group: 'name') do
   cluster.offset_commit('topic1', 0, 1000)
 end
 ```
+
+## To do
+
+* Stream API
+* CLI
+* Heartbeat / JoinGroup APIs
 
 ## Requirements
 
