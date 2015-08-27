@@ -25,8 +25,4 @@ module Neptune
 
   # Connection errors
   class ConnectionError < Error; end
-
-  # Lookup errors
-  class InvalidTopicError < Error; end
-  class InvalidPartitionError < Error; end
 end

@@ -110,7 +110,7 @@ module Neptune
           api::Response.new(
             topic_name: request.topic_name,
             partition_id: request.partition_id,
-            error_code: ErrorCode.find_by_name(:leader_not_available)
+            error_code: ErrorCode[:leader_not_available]
           )
         end
       end

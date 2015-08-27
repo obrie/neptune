@@ -75,7 +75,7 @@ module Neptune
           Api::Produce::Response.new(
             topic_name: request.topic_name,
             partition_id: request.partition_id,
-            error_code: ErrorCode.find_by_name(:no_error)
+            error_code: ErrorCode[:no_error]
           )
         end)
       end

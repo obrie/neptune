@@ -18,7 +18,7 @@ module Neptune
     # The first available error in the response
     # @return [Fixnum]
     def error_code
-      enumerable? && map(&:error_code).reject(&:success?).first || ErrorCode.find_by_name(:no_error)
+      enumerable? && map(&:error_code).reject(&:success?).first || ErrorCode[:no_error]
     end
 
     private

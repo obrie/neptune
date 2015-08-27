@@ -37,7 +37,7 @@ module Neptune
 
     # Looks up the error code associated with the given name
     # @return [Neptune::ErrorCode]
-    def self.find_by_name(name)
+    def self.[](name)
       new(NAMES_BY_VALUE.key(name))
     end
 

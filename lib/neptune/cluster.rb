@@ -43,15 +43,15 @@ module Neptune
       @brokers[id]
     end
 
-    # Looks up the topic with the given name.
-    # @raise [Neptune::InvalidTopicError] if the topic is not found
+    # Looks up the topic with the given name or raises an exception if the topic
+    # is not found
     # @return [Neptune::Topic]
     def topic!(name)
       if !@topics[name] || refresh?
         refresh!([name])
       end
 
-      @topics[name] || ErrorCode.find_by_name(:unknown_topic_or_partition).raise
+      @topics[name] || ErrorCode[:unknown_topic_or_partition].raise
     end
 
     # Looks up the topic with the given name.  Missing topic metadata will be
@@ -138,9 +138,9 @@ module Neptune
     # Publish a value to a given topic
     # @return [Neptune::Produce::Response]
     def produce(topic_name, value, options = {}, &callback)
-      produce!(topic_name, value, options, &callback)
-    rescue Error
-      false
+      catch_errors(Api::Produce::Response) do
+        produce!(topic_name, value, options, &callback)
+      end
     end
 
     # Fetch messages from the given topic / partition or raise an exception if it fails
@@ -160,9 +160,9 @@ module Neptune
     # Fetch messages from the given topic / partition
     # @return [Neptune::Fetch::Response]
     def fetch(topic_name, partition_id, offset, options = {}, &callback)
-      fetch!(topic_name, partition_id, offset, options, &callback)
-    rescue Error
-      nil
+      catch_errors(Api::Fetch::Response) do
+        fetch!(topic_name, partition_id, offset, options, &callback)
+      end
     end
 
     # Looks up valid offsets available within a given topic / partition or
@@ -184,9 +184,9 @@ module Neptune
     # Looks up valid offsets available within a given topic / partition
     # @return [Neptune::Offset::Response]
     def offset(topic_name, partition_id, options = {}, &callback)
-      offset!(topic_name, partition_id, options, &callback)
-    rescue Error
-      nil
+      catch_errors(Api::Offset::Response) do
+        offset!(topic_name, partition_id, options, &callback)
+      end
     end
 
     # Looks up the metadata associated with a consumer group or raise an
@@ -210,9 +210,9 @@ module Neptune
     # Looks up the metadata associated with a consumer group
     # @return [Neptune::ConsumerMetadata::Response]
     def consumer_metadata(options = {})
-      consumer_metadata!(options)
-    rescue Error
-      nil
+      catch_errors(Api::ConsumerMetadata::Response) do
+        consumer_metadata!(options)
+      end
     end
 
     # Looks up the broker acting as coordinator for offsets within the given
@@ -247,9 +247,9 @@ module Neptune
     # Looks up the latest offset for a consumer in the given topic / partition
     # @return [Neptune::OffsetFetch::Response]
     def offset_fetch(topic_name, partition_id, options = {}, &callback)
-      offset_fetch!(topic_name, partition_id, options, &callback)
-    rescue Error
-      nil
+      catch_errors(Api::OffsetFetch::Response) do
+        offset_fetch!(topic_name, partition_id, options, &callback)
+      end
     end
 
 
@@ -271,9 +271,9 @@ module Neptune
     # Tracks the latest offset for a consumer in the given topic / partition
     # @return [Neptune::OffsetCommit::Response]
     def offset_commit(topic_name, partition_id, offset, options = {}, &callback)
-      offset_commit!(topic_name, partition_id, offset, options, &callback)
-    rescue Error
-      nil
+      catch_errors(Api::OffsetCommit::Response) do
+        offset_commit!(topic_name, partition_id, offset, options, &callback)
+      end
     end
 
     # Runs a batch of API calls
@@ -281,7 +281,7 @@ module Neptune
     # @return [Neptune::Batch]
     def batch(api_name, options = {})
       if batch = @batches[api_name]
-        raise(Error.new("A batch has already been started for #{api_name} API"))
+        raise ArgumentError, "A batch has already been started for #{api_name} API"
       else
         batch = @batches[api_name] = Api.get(api_name)::Batch.new(self, options)
         begin
@@ -352,6 +352,19 @@ module Neptune
           result.error_code.raise
         end
       end
+    end
+
+    # Run a block, catching any errors that occur and building a response
+    # object with an appropriate error code.
+    # @return [Neptune::Resource]
+    def catch_errors(response_class)
+      yield
+    rescue APIError => e
+      response_class.new(error_code: e.error_code)
+    rescue ConnectionError => e
+      response_class.new(error_code: ErrorCode[:broker_not_available])
+    rescue Error => e
+      response_class.new(error_code: ErrorCode[:unknown_error])
     end
   end
 end

@@ -1,4 +1,5 @@
 require 'neptune/compression'
+require 'neptune/error_code'
 require 'neptune/errors'
 require 'neptune/partition'
 require 'neptune/resource'
@@ -62,7 +63,7 @@ module Neptune
     # Looks up the partition with the given id or raises an error if it doesn't exist
     # @return [Neptune::Partition]
     def partition!(id)
-      partition(id) || raise(InvalidPartitionError.new("Partition #{id} is invalid for topic #{name}"))
+      partition(id) || ErrorCode[:unknown_topic_or_partition].raise
     end
 
     # Looks up the partitions that are currently available for access
@@ -83,7 +84,7 @@ module Neptune
           # Round-robin between partitions
           available_partitions[next_partition_counter % available_partitions.count]
         else
-          raise(InvalidPartitionError.new("No partitions available for topic #{name}"))
+          ErrorCode[:leader_not_available].raise
         end
       end
     end
