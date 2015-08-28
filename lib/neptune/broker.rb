@@ -23,6 +23,10 @@ module Neptune
     # @return [Fixnum]
     attribute :port, Int32
 
+    # The connection being used by the broker
+    # @return [Neptune::Connection]
+    attr_reader :connection
+
     # The cluster this broker belongs to
     # @return [Neptune::Cluster]
     attr_accessor :cluster
@@ -32,12 +36,12 @@ module Neptune
     def initialize(*) #:nodoc:
       super
       @correlation_id = 0
+      @connection = Connection.new(host, port)
     end
 
-    # The connection being used by the broker
-    # @return [Neptune::Connection]
-    def connection
-      @connection ||= Connection.new(host, port, config)
+    def cluster=(cluster) #:nodoc:
+      @cluster = cluster
+      @connection.config = cluster.config
     end
 
     # The URI for this broker

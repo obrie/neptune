@@ -98,7 +98,8 @@ module Neptune
           next unless attribute?(attr, context[:version])
 
           begin
-            value = resource.read_kafka_attribute(attr, context.merge(buffer: buffer))
+            type = attributes[attr][:type]
+            value = type.to_kafka(resource[attr], context.merge(buffer: buffer))
             buffer.prepend(value)
           rescue => ex
             raise EncodingError.new("[#{name}##{attr}] #{ex.class}: #{ex.message}")
@@ -114,13 +115,13 @@ module Neptune
         context[:version] ||= 0
 
         catch(:halt) do
-          resource = new
-
-          attributes.each do |attr, *|
+          resource_attrs = attributes.each_with_object({}) do |(attr, attr_config), resource_attrs|
             next unless attribute?(attr, context[:version])
 
             begin
-              resource.write_kafka_attribute(attr, buffer, context)
+              type = attr_config[:type]
+              value = type.from_kafka(buffer, context)
+              resource_attrs[attr] = value unless value.nil?
             rescue DecodingError
               # Just re-raise instead of producing a nested exception
               raise
@@ -129,7 +130,7 @@ module Neptune
             end
           end
 
-          resource
+          new(resource_attrs, context)
         end
       end
 
@@ -159,9 +160,8 @@ module Neptune
     # get specified.
     # 
     # @api private
-    def initialize(attributes = {}, *args)
+    def initialize(attributes = {}, context = {})
       self.attributes = attributes
-      super(*args)
     end
 
     # Looks up the value associated with the given attribute
@@ -192,22 +192,6 @@ module Neptune
           self[attr] = value
         end
       end
-    end
-
-    # Reads the value from the given attribute and converts it to Kafka format
-    # @return [String]
-    def read_kafka_attribute(attr, *args)
-      type = self.class.attributes[attr][:type]
-      value = self[attr]
-      type.to_kafka(value, *args)
-    end
-
-    # Writes to the given attribute from a Kafka buffer
-    # @private
-    def write_kafka_attribute(attr, buffer, context = {})
-      type = self.class.attributes[attr][:type]
-      value = type.from_kafka(buffer, context)
-      self[attr] = value unless value.nil?
     end
 
     # Converts this class to its Kafka data representation

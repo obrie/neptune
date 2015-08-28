@@ -13,10 +13,14 @@ module Neptune
     # @return [Fixnum]
     attr_reader :port
 
-    def initialize(host, port, config) #:nodoc:
+    # The current configuration for the connection
+    # @return [Hash]
+    attr_accessor :config
+
+    def initialize(host, port, config = {}) #:nodoc:
       @host = host
       @port = port
-      @config = config
+      @config = {connect_timeout: 1000, read_timeout: 1000, write_timeout: 1000}.merge(config)
     end
 
     # Determines whether the socket is open and can be read from

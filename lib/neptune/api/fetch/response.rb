@@ -27,21 +27,14 @@ module Neptune
 
         delegate [:success?, :retriable?] => :error_code
 
-        private
-        # Writes to the given attribute from a Kafka buffer
-        # @private
-        def write_kafka_attribute(attr, buffer, context = {})
-          result = super
+        def initialize(attributes = {}, context = {}) #:nodoc:
+          super
 
-          # Set the underlying messages associated with this partition,
-          # decompressing any that might have been previously compressed.
-          if attr == :messages
-            decompress(context) if compressed?
-          end
-
-          result
+          # Decompress any messages that may have been previously compressed
+          decompress(context) if compressed?
         end
 
+        private
         # Whether any of the underlying messages are compressed
         # @return [Boolean]
         def compressed?
