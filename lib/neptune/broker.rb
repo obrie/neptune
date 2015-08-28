@@ -104,10 +104,10 @@ module Neptune
     # @param [Array<Neptune::Api::Fetch::Request>] requests Topics/partitions to fetch messages from
     # @return [Neptune::Api::Fetch::BatchResponse]
     def fetch(requests, options = {})
-      assert_valid_keys(options, :max_time, :min_bytes)
+      assert_valid_keys(options, :max_wait_time, :min_bytes)
 
       request = Api::Fetch::BatchRequest.new(
-        max_wait_time: options.fetch(:max_time, config.max_fetch_time),
+        max_wait_time: options.fetch(:max_wait_time, config.max_fetch_time),
         min_bytes: options.fetch(:min_bytes, config.min_fetch_bytes),
         requests: requests
       )
