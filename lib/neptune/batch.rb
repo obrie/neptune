@@ -1,12 +1,12 @@
 require 'forwardable'
 require 'set'
 require 'neptune/error_code'
-require 'neptune/helpers/pretty_print'
+require 'neptune/support/pretty_print'
 
 module Neptune
   # Tracks a batch of api requests
   class Batch
-    include Helpers::PrettyPrint
+    include Support::PrettyPrint
     extend Forwardable
 
     # The base module for this batch's API

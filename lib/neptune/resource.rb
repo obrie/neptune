@@ -2,8 +2,8 @@ require 'forwardable'
 require 'pp'
 require 'neptune/errors'
 require 'neptune/error_code'
-require 'neptune/helpers/assertions'
-require 'neptune/helpers/pretty_print'
+require 'neptune/support/assertions'
+require 'neptune/support/pretty_print'
 require 'neptune/types'
 
 module Neptune
@@ -150,9 +150,9 @@ module Neptune
       end
     end
 
-    include Helpers::PrettyPrint
+    include Support::PrettyPrint
     extend Forwardable
-    extend Helpers::Assertions
+    extend Support::Assertions
 
     # Initializes this resources with the given attributes.  This will continue
     # to call the superclass's constructor with any additional arguments that

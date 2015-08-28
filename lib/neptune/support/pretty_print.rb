@@ -1,5 +1,5 @@
 module Neptune
-  module Helpers
+  module Support
     # Provides a standard interface for inspecting objects
     module PrettyPrint
       # Forces this object to use PP's implementation of inspection.

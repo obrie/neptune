@@ -1,5 +1,5 @@
 module Neptune
-  module Helpers
+  module Support
     # Provides a set of helper methods for logging
     # @api private
     module Loggable

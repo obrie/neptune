@@ -1,5 +1,5 @@
 module Neptune
-  module Helpers
+  module Support
     # Provides a set of helper methods for making assertions about the content
     # of various objects
     module Assertions

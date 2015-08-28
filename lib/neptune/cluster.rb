@@ -1,14 +1,14 @@
 require 'neptune/batch'
 require 'neptune/broker_collection'
 require 'neptune/config'
-require 'neptune/helpers/loggable'
+require 'neptune/support/loggable'
 require 'neptune/topic_collection'
 require 'neptune/api'
 
 module Neptune
   # A group of brokers
   class Cluster
-    include Helpers::Loggable
+    include Support::Loggable
 
     # List of brokers known to the cluster
     # @return [Neptune::BrokerCollection]

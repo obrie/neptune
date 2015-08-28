@@ -1,14 +1,14 @@
 require 'forwardable'
 require 'neptune/connection'
-require 'neptune/helpers/assertions'
-require 'neptune/helpers/pretty_print'
+require 'neptune/support/assertions'
+require 'neptune/support/pretty_print'
 require 'neptune/resource'
 
 module Neptune
   # A node within a Kafka cluster
   class Broker < Resource
-    include Helpers::Assertions
-    include Helpers::PrettyPrint
+    include Support::Assertions
+    include Support::PrettyPrint
     extend Forwardable
 
     # The broker's unique identifier
