@@ -6,6 +6,13 @@ module Neptune
       @pos = 0
     end
 
+    # Rewinds the position back to the start of the buffer
+    # @return [Neptune::Buffer]
+    def rewind
+      @pos = 0
+      self
+    end
+
     # Adds the given value to the end of the buffer
     # @return [Neptune::Buffer]
     def concat(value)
