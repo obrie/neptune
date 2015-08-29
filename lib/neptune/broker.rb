@@ -73,7 +73,7 @@ module Neptune
       write(request)
 
       if request.required_acks != 0
-        read(Api::Produce::BatchResponse)
+        read(Api::Produce::BatchResponse, request.correlation_id)
       else
         Api::Produce::BatchResponse.new(responses: requests.map do |request|
           Api::Produce::Response.new(
@@ -96,7 +96,7 @@ module Neptune
         topic_names: topic_names
       )
       write(request)
-      read(Api::Metadata::Response)
+      read(Api::Metadata::Response, request.correlation_id)
     end
 
     # Invokes the fetch API with the given requests
@@ -126,7 +126,7 @@ module Neptune
         requests: requests
       )
       write(request)
-      read(Api::Offset::BatchResponse)
+      read(Api::Offset::BatchResponse, request.correlation_id)
     end
 
     # Fetch metadata for the given consumer group
@@ -140,7 +140,7 @@ module Neptune
         consumer_group: options.fetch(:group, config.consumer_group)
       )
       write(request)
-      read(Api::ConsumerMetadata::Response)
+      read(Api::ConsumerMetadata::Response, request.correlation_id)
     end
 
     # Invokes the offset fetch API with the given requests
@@ -155,7 +155,7 @@ module Neptune
         requests: requests
       )
       write(request)
-      read(Api::OffsetFetch::BatchResponse)
+      read(Api::OffsetFetch::BatchResponse, request.correlation_id)
     end
 
     # Invokes the offset commit API with the given requests
@@ -173,7 +173,7 @@ module Neptune
         requests: requests
       )
       write(request)
-      read(Api::OffsetCommit::BatchResponse)
+      read(Api::OffsetCommit::BatchResponse, request.correlation_id)
     end
 
     # Close any open connections to the broker
@@ -189,9 +189,10 @@ module Neptune
     end
 
     # Reads a response from the connection
-    def read(response_class)
+    def read(response_class, correlation_id)
       connection.verify
-      response_class.from_kafka(connection.read, version: config.api_version(response_class.api_name))
+      buffer = connection.read(correlation_id)
+      response_class.from_kafka(buffer, version: config.api_version(response_class.api_name))
     end
 
     # Writes the given request to the connection
