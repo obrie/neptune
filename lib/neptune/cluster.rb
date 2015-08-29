@@ -97,8 +97,8 @@ module Neptune
       brokers = self.brokers.to_a.shuffle
 
       # Attempt a refresh on the first available broker
-      retriable(:metadata, attempts: brokers.count, backoff: 0) do |index|
-        metadata = brokers[index].metadata(topic_names)
+      retriable(:metadata, attempts: [brokers.count, config[:retry_count]].max, backoff: 0) do |index|
+        metadata = brokers[index % brokers.count].metadata(topic_names)
         metadata.topics.each {|topic| topics << topic if topic.exists?}
         metadata.brokers.each {|broker| self.brokers << broker}
 
@@ -195,8 +195,8 @@ module Neptune
     def consumer_metadata!(options = {})
       brokers = self.brokers.to_a.shuffle
 
-      retriable(:consumer_metadata, attempts: brokers.count, backoff: 0) do |index|
-        metadata = brokers[index].consumer_metadata(options)
+      retriable(:consumer_metadata, attempts: [brokers.count, config[:retry_count]].max, backoff: 0) do |index|
+        metadata = brokers[index % brokers.count].consumer_metadata(options)
 
         if metadata.success?
           self.brokers << metadata.coordinator
