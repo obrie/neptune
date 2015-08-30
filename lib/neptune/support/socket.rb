@@ -1,4 +1,5 @@
 require 'socket'
+require 'openssl'
 
 module Neptune
   module Support
@@ -55,7 +56,7 @@ module Neptune
 
       # Re-opens a connection to the remote server, closing any that may be
       # currently open
-      # @raise [SystemCallError] if the socket cannot connect
+      # @raise [SystemCallError, OpenSSL::SSL::SSLError] if the socket cannot connect
       # @return [Boolean] true, always
       def reconnect
         close unless closed?
@@ -63,7 +64,7 @@ module Neptune
       end
 
       # Opens a connection to the remote server
-      # @raise [SystemCallError] if the socket cannot connect
+      # @raise [SystemCallError, OpenSSL::SSL::SSLError] if the socket cannot connect
       # @return [Boolean] true, always
       def connect
         address = ::Socket.getaddrinfo(host, nil)
@@ -84,6 +85,8 @@ module Neptune
           close
           raise
         end
+
+        start_ssl if config[:ssl]
 
         true
       end
@@ -132,6 +135,39 @@ module Neptune
       end
 
       private
+      # Starts an SSL connection through the current socket
+      # @raise [SystemCallError, OpenSSL::SSL::SSLError]
+      def start_ssl
+        ssl_socket = OpenSSL::SSL::SSLSocket.new(@socket, ssl_context)
+        ssl_socket.sync_close = true
+        try_or_wait(read: config[:connect_timeout], write: config[:connect_timeout]) do
+          ssl_socket.connect_nonblock
+        end
+
+        @socket = ssl_socket
+      end
+
+      # Generates the configuration context for an SSL socket
+      # @raise [OpenSSL::SSL::SSLError]
+      # @return [OpenSSL::SSL::SSLContext]
+      def ssl_context
+        context = OpenSSL::SSL::SSLContext.new
+        context.cert = OpenSSL::X509::Certificate.new(File.open(config.fetch(:ssl_cert_file)))
+        context.key = OpenSSL::PKey::RSA.new(File.open(config.fetch(:ssl_key_file)))
+        context.ca_file = config[:ssl_ca_file] if config[:ssl_ca_file]
+        if config[:ssl_verify]
+          context.verify_mode = OpenSSL::SSL::VERIFY_PEER
+          context.verify_callback = lambda do |preverify_ok, context|
+            if preverify_ok != true || context.error != 0
+              raise OpenSSL::SSL::SSLError.new("SSL Verification failed -- Preverify: #{preverify_ok}, Error: #{context.error_string} (#{context.error})")
+            end
+          end
+        else
+          context.verify_mode = OpenSSL::SSL::VERIFY_NONE
+        end
+        context
+      end
+
       # Runs the given block, waiting for the read / write streams to become
       # available if an exception is raised indicating that they aren't.
       # 

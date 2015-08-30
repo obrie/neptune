@@ -9,6 +9,7 @@ Features currently implemented:
 * Compression
 * Fetch
 * Offset management
+* SSL
 
 ## Background
 

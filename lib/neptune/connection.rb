@@ -75,7 +75,7 @@ module Neptune
     # a ConnectionError
     def catch_errors
       yield
-    rescue SystemCallError, IOError => ex
+    rescue SystemCallError, IOError, OpenSSL::SSL::SSLError => ex
       @socket.close
       raise ConnectionError.new("#{ex.class}: #{ex.message}", ex)
     end

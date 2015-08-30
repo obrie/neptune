@@ -29,6 +29,30 @@ module Neptune
     attr_accessor :connect_timeout
 
     #
+    # SSL
+    #
+
+    # Whether SSL is enabled
+    # @return [Boolean]
+    attr_accessor :ssl
+
+    # The SSL certificate file for authentication
+    # @return [String]
+    attr_accessor :ssl_cert_file
+
+    # The SSL key file for authentication
+    # @return [String]
+    attr_accessor :ssl_key_file
+
+    # The SSL certificate authority file for authentication
+    # @return [String]
+    attr_accessor :ssl_ca_file
+
+    # Whether to verify the SSL certificiates chain
+    # @return [Boolean]
+    attr_accessor :ssl_verify
+
+    #
     # Produce-specific configurations
     #
 
@@ -111,6 +135,10 @@ module Neptune
         read_timeout: 10_000,
         write_timeout: 10_000,
         connect_timeout: 10_000,
+
+        # SSL
+        ssl: false,
+        ssl_verify: true,
 
         # Producer configurations
         partitioner: lambda {|key, partition_count| Zlib::crc32(key) % partition_count},
