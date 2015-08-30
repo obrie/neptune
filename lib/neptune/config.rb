@@ -157,6 +157,13 @@ module Neptune
       keys.each_with_object({}) {|key, h| h[key] = self[key]}
     end
 
+    # Looks up the configuration option with the given key
+    # @raise [KeyError] if the key cannot be found
+    # @return [Object]
+    def fetch(key)
+      respond_to?(key) ? send(key) : raise(KeyError.new("key not found: #{key}"))
+    end
+
     # Looks up the version configured for the given API
     # @return [Fixnum]
     def api_version(api_name)
