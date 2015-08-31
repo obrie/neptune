@@ -46,8 +46,8 @@ module Neptune
     end
 
     # Enumerates over each topic
-    def each
-      @by_name.each {|name, topic| yield topic}
+    def each(&block)
+      @by_name.values.each(&block)
     end
   end
 end

@@ -45,8 +45,8 @@ module Neptune
     end
 
     # Enumerates over each broker
-    def each
-      @by_id.each {|id, broker| yield broker}
+    def each(&block)
+      @by_id.values.each(&block)
     end
   end
 end
