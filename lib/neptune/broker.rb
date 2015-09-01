@@ -112,7 +112,7 @@ module Neptune
         requests: requests
       )
       write(request)
-      read(Api::Fetch::BatchResponse)
+      read(Api::Fetch::BatchResponse, request.correlation_id)
     end
 
     # Invokes the offset API with the given requests
