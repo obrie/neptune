@@ -41,7 +41,7 @@ module Neptune
     # that failed
     # @return [Neptune::Resource]
     def responses
-      api::BatchResponse.new(responses: responses_by_request.values.uniq)
+      @responses ||= api::BatchResponse.new(responses: responses_by_request.values.uniq)
     end
 
     # The response for the given request
