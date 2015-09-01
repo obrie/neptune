@@ -97,11 +97,15 @@ module Neptune
       def read(length, options = {})
         options = {timeout: config[:read_timeout]}.merge(options)
 
-        try_or_wait(read: options[:timeout]) do
-          data = @socket.read_nonblock(length)
-          raise EOFError.new('end of file reached') unless data
-          data
+        data = ""
+        while data.length < length
+          try_or_wait(read: options[:timeout]) do
+            next_data = @socket.read_nonblock(length - data.length)
+            raise EOFError.new('end of file reached') unless next_data
+            data << next_data
+          end
         end
+        data
       end
 
       # Writes the given data to the socket.
