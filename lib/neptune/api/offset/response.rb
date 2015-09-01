@@ -22,6 +22,11 @@ module Neptune
 
         delegate [:success?, :retriable?] => :error_code
 
+        def initialize(*) #:nodoc:
+          super
+          @offsets ||= []
+        end
+
         # The value of the offset requested
         # @return [Fixnum]
         def value

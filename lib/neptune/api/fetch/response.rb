@@ -29,6 +29,7 @@ module Neptune
 
         def initialize(attributes = {}, context = {}) #:nodoc:
           super
+          @messages ||= []
 
           # Decompress any messages that may have been previously compressed
           decompress(context) if compressed?
