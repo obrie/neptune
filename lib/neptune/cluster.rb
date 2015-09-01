@@ -31,7 +31,6 @@ module Neptune
       @brokers = BrokerCollection.new(self)
       @topics = TopicCollection.new(self)
       @config = Config.new(config)
-      @batches = {}
 
       # Add seed brokers
       brokers.each {|uri| @brokers.create(uri: uri)}
@@ -125,14 +124,11 @@ module Neptune
     # @return [Neptune::Produce::Response]
     def produce!(topic_name, value, options = {}, &callback)
       options = options.dup
+      request_options = slice!(options, :key)
 
-      run_or_update_batch(:produce,
-        Api::Produce::Request.new(
-          topic_name: topic_name,
-          messages: [Message.new(key: options.delete(:key), value: value)]
-        ),
-        callback, options
-      )
+      batch(:produce, options) do |batch|
+        batch.produce(topic_name, value, request_options)
+      end.response!
     end
 
     # Publish a value to a given topic
@@ -146,15 +142,12 @@ module Neptune
     # Fetch messages from the given topic / partition or raise an exception if it fails
     # @return [Neptune::Fetch::Response]
     def fetch!(topic_name, partition_id, offset, options = {}, &callback)
-      run_or_update_batch(:fetch,
-        Api::Fetch::Request.new(
-          topic_name: topic_name,
-          partition_id: partition_id,
-          offset: offset,
-          max_bytes: options.delete(:max_bytes) || config.max_fetch_bytes
-        ),
-        callback, options
-      )
+      options = options.dup
+      request_options = slice!(options, :max_bytes)
+
+      batch(:fetch, options) do |batch|
+        batch.fetch(topic_name, partition_id, offset, request_options)
+      end.response!
     end
 
     # Fetch messages from the given topic / partition
@@ -169,16 +162,12 @@ module Neptune
     # raises an exception if the request fails
     # @return [Neptune::Offset::Response]
     def offset!(topic_name, partition_id, options = {}, &callback)
-      options = {time: :latest}.merge(options)
+      options = options.dup
+      request_options = slice!(options, :time)
 
-      run_or_update_batch(:offset,
-        Api::Offset::Request.new(
-          topic_name: topic_name,
-          partition_id: partition_id,
-          time: options.delete(:time)
-        ),
-        callback, options
-      )
+      batch(:offset, options) do |batch|
+        batch.offset(topic_name, partition_id, request_options)
+      end.response!
     end
 
     # Looks up valid offsets available within a given topic / partition
@@ -235,13 +224,9 @@ module Neptune
     # or raises an exception if the request fails
     # @return [Neptune::OffsetFetch::Response]
     def offset_fetch!(topic_name, partition_id, options = {}, &callback)
-      run_or_update_batch(:offset_fetch,
-        Api::OffsetFetch::Request.new(
-          topic_name: topic_name,
-          partition_id: partition_id
-        ),
-        callback, options
-      )
+      batch(:offset_fetch, options) do |batch|
+        batch.offset_fetch(topic_name, partition_id)
+      end.response!
     end
 
     # Looks up the latest offset for a consumer in the given topic / partition
@@ -252,20 +237,16 @@ module Neptune
       end
     end
 
-
     # Tracks the latest offset for a consumer in the given topic / partition
     # or raises an exception if the request fails
     # @return [Neptune::OffsetCommit::Response]
     def offset_commit!(topic_name, partition_id, offset, options = {}, &callback)
-      run_or_update_batch(:offset_commit,
-        Api::OffsetCommit::Request.new(
-          topic_name: topic_name,
-          partition_id: partition_id,
-          offset: offset,
-          metadata: options.delete(:metadata)
-        ),
-        callback, options
-      )
+      options = options.dup
+      request_options = slice!(options, :metadata)
+
+      batch(:offset_commit, options) do |batch|
+        batch.offset_commit(topic_name, partition_id, offset, request_options)
+      end.response!
     end
 
     # Tracks the latest offset for a consumer in the given topic / partition
@@ -280,18 +261,12 @@ module Neptune
     # @yield [Neptune::Batch]
     # @return [Neptune::Batch]
     def batch(api_name, options = {})
-      if batch = @batches[api_name]
-        raise ArgumentError, "A batch has already been started for #{api_name} API"
-      else
-        batch = @batches[api_name] = Api.get(api_name)::Batch.new(self, options)
-        begin
-          yield
-          batch.run
-          batch
-        ensure
-          @batches.delete(api_name)
-        end
+      batch = Api.get(api_name)::Batch.new(self, options)
+      if block_given?
+        yield batch
+        batch.run
       end
+      batch
     end
 
     # Closes all open connections in brokers
@@ -335,22 +310,12 @@ module Neptune
     end
 
     private
-    # Starts or continues a request batch for the given API.  If a callback
-    # is provided, then that block will be called.  Otherwise, a single
-    # request will be added to the batch.
-    def run_or_update_batch(api_name, request, callback, options = {})
-      if batch = @batches[api_name]
-        batch.add(request, callback)
-        nil
-      else
-        batch = Api.get(api_name)::Batch.new(self, options)
-        batch.add(request, callback)
-        result = batch.run
-        if result.success?
-          result.responses.first
-        else
-          result.error_code.raise
-        end
+    # Slices a set of keys from the given options hash, modifying the original
+    # hash
+    # @return [Hash]
+    def slice!(options, *keys)
+      keys.each_with_object({}) do |key, sliced|
+        sliced[key] = options.delete(key) if options.key?(key)
       end
     end
 

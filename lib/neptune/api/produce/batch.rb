@@ -4,6 +4,17 @@ module Neptune
   module Api
     module Produce
       class Batch < Neptune::Batch
+        # Publish a value to a given topic
+        # @return [Boolean] true, always
+        def produce(topic_name, value, options = {}, &callback)
+          assert_valid_keys(options, :key)
+
+          add(Api::Produce::Request.new(
+            topic_name: topic_name,
+            messages: [Message.new(key: options[:key], value: value)]
+          ), &callback)
+        end
+
         protected
         # Process requests, grouped by broker.  Before being processed,
         # requests will be grouped by partition id and compressed.

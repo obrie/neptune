@@ -1,11 +1,13 @@
 require 'forwardable'
 require 'set'
 require 'neptune/error_code'
+require 'neptune/support/assertions'
 require 'neptune/support/pretty_print'
 
 module Neptune
   # Tracks a batch of api requests
   class Batch
+    include Support::Assertions
     include Support::PrettyPrint
     extend Forwardable
 
@@ -44,6 +46,17 @@ module Neptune
       @responses ||= api::BatchResponse.new(responses: responses_by_request.values.uniq)
     end
 
+    # Attempts to get the first successful response or raises an APIError if
+    # one cannot be found
+    # @return [Neptune::Resource]
+    def response!
+      if responses.success?
+        responses.first
+      else
+        responses.error_code.raise
+      end
+    end
+
     # The response for the given request
     # @return [Netpune::Resource]
     def response_for(request)
@@ -68,14 +81,6 @@ module Neptune
       end
     end
 
-    # Adds the give request to this batch
-    # @return [Boolean] true, always
-    def add(request, callback = nil)
-      @requests << request
-      @callbacks[request] = callback if callback
-      true
-    end
-
     # Processes all of the requests in the batch
     # @return [Neptune::Resource] The BatchResponse object for this batch's API
     def run
@@ -90,6 +95,14 @@ module Neptune
     end
 
     protected
+    # Adds the give request to this batch
+    # @return [Boolean] true, always
+    def add(request, &callback)
+      @requests << request
+      @callbacks[request] = callback if callback
+      true
+    end
+
     # Process requests, grouped by broker
     def process(requests)
       by_broker = requests.group_by {|request| broker_for(request)}
