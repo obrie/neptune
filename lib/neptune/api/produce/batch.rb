@@ -51,7 +51,7 @@ module Neptune
         end
 
         def pretty_print_ignore #:nodoc:
-          super + [:@mapings]
+          super + [:@mappings]
         end
       end
     end
