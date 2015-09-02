@@ -190,7 +190,6 @@ module Neptune
 
     # Reads a response from the connection
     def read(response_class, correlation_id)
-      connection.verify
       buffer = connection.read(correlation_id)
       response_class.from_kafka(buffer, version: config.api_version(response_class.api_name))
     end
