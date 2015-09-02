@@ -279,9 +279,6 @@ module Neptune
     # Attempts a block the given number of times.  This will catch allow retry
     # on certain exceptions as well.
     # 
-    # To halt events, simply `throw :halt` with the error code that's causing
-    # the problem.
-    # 
     # @return [Boolean] whether the block completed successfully
     def retriable(api_name, options = {})
       attempts = options.fetch(:attempts, config[:retry_count])
@@ -289,20 +286,18 @@ module Neptune
       backoff = options.fetch(:backoff, config[:retry_backoff])
       completed = false
 
-      catch(:halt) do
-        attempts.times do |attempt|
-          begin
-            break if completed = yield(attempt)
-          rescue *exceptions => ex
-            logger.warn "[Neptune] Failed to call #{api_name} API: #{ex.message}"
-            raise if attempt == attempts - 1
-          end
+      attempts.times do |attempt|
+        begin
+          break if completed = yield(attempt)
+        rescue *exceptions => ex
+          logger.warn "[Neptune] Failed to call #{api_name} API: #{ex.message}"
+          raise if attempt == attempts - 1
+        end
 
-          if attempt < attempts - 1
-            # Force a refresh and backoff a little bit
-            reset_refresh
-            sleep(backoff / 1000.0) if backoff > 0
-          end
+        if attempt < attempts - 1
+          # Force a refresh and backoff a little bit
+          reset_refresh
+          sleep(backoff / 1000.0) if backoff > 0
         end
       end
 
