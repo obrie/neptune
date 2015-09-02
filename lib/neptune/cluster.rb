@@ -108,7 +108,7 @@ module Neptune
 
     # Refreshes the metadata associated with the given topics
     # @return [Boolean]
-    def refresh(topic_names)
+    def refresh(topic_names = [])
       refresh!(topic_names)
     rescue Error
       false
