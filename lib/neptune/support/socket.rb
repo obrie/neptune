@@ -45,13 +45,13 @@ module Neptune
       # Waits the given amount of seconds until the socket is ready to be read from
       # @return [Boolean]
       def ready_for_read?(timeout = 0)
-        IO.select([@socket], nil, nil, timeout / 1000.0)
+        @socket && IO.select([@socket], nil, nil, timeout ? timeout / 1000.0 : nil)
       end
 
       # Waits the given amount of seconds until the socket is ready to be written to
       # @return [Boolean]
       def ready_for_write?(timeout = 0)
-        IO.select(nil, [@socket], nil, timeout / 1000.0)
+        @socket && IO.select(nil, [@socket], nil, timeout ? timeout / 1000.0 : nil)
       end
 
       # Re-opens a connection to the remote server, closing any that may be
