@@ -4,7 +4,9 @@ require 'openssl'
 module Neptune
   module Support
     # A wrapper around Socket to provide higher-level functionality such as
-    # timeouts
+    # timeouts.
+    # 
+    # This class is not thread-safe.
     class Socket
       # Hostname of the remote server
       # @return [String]
@@ -18,22 +20,24 @@ module Neptune
       # @return [Hash]
       attr_accessor :config
 
+      # The number of errors occurred in this socket
+      # @return [Fixnum]
+      attr_reader :status
+
       def initialize(host, port, config = {}) #:nodoc:
         @host = host
         @port = port
-        @config = {
-          connect_timeout: 60_000,
-          read_timeout: 60_000,
-          write_timeout: 60_000
-        }.merge(config)
+        @config = config
+        @config[:connect_timeout] ||= 60_000
+        @config[:read_timeout] ||= 60_000
+        @config[:write_timeout] ||= 60_000
+        @status = :waiting
       end
 
-      # Determines whether the socket is open and can be read from
+      # Determines whether the socket is in a valid state to be used
       # @return [Boolean]
-      def alive?
-        !closed? && (!ready_for_read? || !@socket.eof?)
-      rescue SystemCallError, IOError => ex
-        false
+      def valid?
+        status == :waiting || status == :connected && !closed? && ready_for_write?
       end
 
       # Determines whether the socket has been closed
@@ -54,19 +58,12 @@ module Neptune
         @socket && IO.select(nil, [@socket], nil, timeout ? timeout / 1000.0 : nil)
       end
 
-      # Re-opens a connection to the remote server, closing any that may be
-      # currently open
-      # @raise [SystemCallError, OpenSSL::SSL::SSLError] if the socket cannot connect
-      # @return [Boolean] true, always
-      def reconnect
-        close unless closed?
-        connect
-      end
-
       # Opens a connection to the remote server
       # @raise [SystemCallError, OpenSSL::SSL::SSLError] if the socket cannot connect
       # @return [Boolean] true, always
       def connect
+        close
+
         address = ::Socket.getaddrinfo(host, nil)
         socket_address = ::Socket.pack_sockaddr_in(port, address[0][3])
 
@@ -88,7 +85,11 @@ module Neptune
 
         start_ssl if config[:ssl]
 
+        @status = :connected
         true
+      rescue => ex
+        @status = :error
+        raise
       end
 
       # Reads the given number of bytes from the socket.
@@ -106,6 +107,9 @@ module Neptune
           end
         end
         data
+      rescue => ex
+        @status = :error
+        raise
       end
 
       # Writes the given data to the socket.
@@ -119,19 +123,20 @@ module Neptune
         end
 
         true
+      rescue => ex
+        @status = :error
+        raise
       end
 
       # Closes the socket.  It can no longer be read / written to after this until
       # it reconnects.
       # @return [Boolean] true, always
       def close
-        if @socket
+        if @socket && !@socket.closed?
           begin
             @socket.close
           rescue IOError => ex
             # Ignore any error
-          ensure
-            @socket = nil
           end
         end
 

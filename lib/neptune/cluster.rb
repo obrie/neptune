@@ -2,6 +2,7 @@ require 'neptune/batch'
 require 'neptune/broker_collection'
 require 'neptune/config'
 require 'neptune/support/loggable'
+require 'neptune/support/periodic_timer'
 require 'neptune/topic_collection'
 require 'neptune/api'
 
@@ -18,10 +19,6 @@ module Neptune
     # @return [Neptune::TopicCollection]
     attr_reader :topics
 
-    # The time at which the metadata for this cluster was last refreshed
-    # @return [Time]
-    attr_reader :last_refreshed_at
-
     # The configuration for client interaction with brokers
     # @return [Neptune::Config]
     attr_reader :config
@@ -34,6 +31,9 @@ module Neptune
 
       # Add seed brokers
       brokers.each {|uri| @brokers.create(uri: uri)}
+
+      # Start periodic refresh
+      @refresh_timer = Support::PeriodicTimer.new(@config.refresh_interval) { refresh }
     end
 
     # Looks up the broker with the given unique id
@@ -46,11 +46,10 @@ module Neptune
     # is not found
     # @return [Neptune::Topic]
     def topic!(name)
-      if !@topics[name] || refresh?
+      @topics[name] || begin
         refresh!([name])
+        @topics[name] || ErrorCode[:unknown_topic_or_partition].raise
       end
-
-      @topics[name] || ErrorCode[:unknown_topic_or_partition].raise
     end
 
     # Looks up the topic with the given name.  Missing topic metadata will be
@@ -78,12 +77,6 @@ module Neptune
       self.topics.to_a
     end
 
-    # Whether a refresh of the cluster metadata is needed
-    # @return [Boolean]
-    def refresh?
-      !last_refreshed_at || (Time.now - last_refreshed_at) * 1000 >= config[:refresh_interval]
-    end
-
     # Refreshes the metadata associated with the given topics or raise an exception
     # if it fails
     # @return [Boolean]
@@ -101,7 +94,7 @@ module Neptune
         metadata.topics.each {|topic| topics << topic if topic.exists?}
         metadata.brokers.each {|broker| self.brokers << broker}
 
-        @last_refreshed_at = Time.now
+        @refresh_timer.reset
         true
       end
     end
@@ -272,6 +265,7 @@ module Neptune
     # Closes all open connections in brokers
     # @return [Boolean] always true
     def shutdown
+      @refresh_timer.stop
       brokers.each {|broker| broker.close}
       true
     end
@@ -288,6 +282,9 @@ module Neptune
 
       attempts.times do |attempt|
         begin
+          # Force a refresh on subsequent attempts
+          refresh if attempt > 0 && api_name != :metadata
+
           break if completed = yield(attempt)
         rescue *exceptions => ex
           logger.warn "[Neptune] Failed to call #{api_name} API: #{ex.message}"
@@ -295,8 +292,6 @@ module Neptune
         end
 
         if attempt < attempts - 1
-          # Force a refresh and backoff a little bit
-          reset_refresh
           sleep(backoff / 1000.0) if backoff > 0
         end
       end

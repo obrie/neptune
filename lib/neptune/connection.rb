@@ -1,7 +1,9 @@
 require 'forwardable'
+require 'thread'
 require 'neptune/buffer'
 require 'neptune/errors'
 require 'neptune/support/socket'
+require 'neptune/support/blocking_hash'
 require 'neptune/types/int32'
 
 module Neptune
@@ -9,48 +11,41 @@ module Neptune
   class Connection
     extend Forwardable
 
-    delegate [:host, :port, :config, :config=, :close] => :@socket
+    delegate [:host, :port, :config, :config=, :close, :valid?] => :@socket
 
     def initialize(host, port, config = {}) #:nodoc:
       @socket = Support::Socket.new(host, port, config)
+      @lock = Mutex.new
+      @read_thread = nil
+      @readers = Queue.new
+      @buffers = Support::BlockingHash.new
     end
 
-    # Verifies that the connection is alive.  If it isn't, this will automatically
-    # reconnect.
-    # @raise [ConnectionError] if the socket cannot connect or has timed out
-    # @return [Boolean] true, always
-    def verify
+    # Reads from the connection's socket any incoming buffers from prior
+    # requests
+    def read_buffers
       catch_errors do
-        @socket.reconnect unless @socket.alive?
-        true
+        loop do
+          # Wait for a thread to request to read
+          break unless @readers.pop
+
+          length = @socket.read(4).unpack('N').first
+          buffer = Buffer.new(@socket.read(length))
+          id = Types::Int32.from_kafka(buffer)
+          buffer.rewind
+
+          @buffers[id] = buffer
+        end
       end
     end
 
-    # Reads the next message from the socket.
+    # Reads the message from the socket that matches the given correlation id.
     # @raise [ConnectionError] if the socket is unavailable or has timed out
     # @return [Neptune::Buffer]
-    def read(correlation_id)
+    def read(id)
       catch_errors do
-        # Determine the time by which a response must be read
-        deadline = Time.now + (config[:read_timeout] / 1000.0)
-
-        buffer = nil
-        until buffer
-          ms_left = (deadline - Time.now).to_f * 1000
-
-          if ms_left > 0 || @socket.ready_for_read?
-            # Attempt to read the next buffer
-            next_buffer, next_correlation_id = read_buffer(ms_left)
-            if correlation_id == next_correlation_id
-              buffer = next_buffer
-            end
-          else
-            # Time has run out
-            raise Errno::ETIMEDOUT.new('exceeded read timeout')
-          end
-        end
-
-        buffer
+        @readers << Thread.current
+        @buffers[id]
       end
     end
 
@@ -58,25 +53,48 @@ module Neptune
     # @raise [ConnectionError] if the socket is unavailable or has timed out
     # @return [Boolean] true, always
     def write(data)
-      catch_errors { @socket.write(data) }
+      catch_errors do
+        @read_thread || @lock.synchronize do
+          if @socket.status == :waiting
+            @socket.connect
+
+            # Start a separate thread for reading from the socket
+            @read_thread = Thread.new { read_buffers }
+          end
+        end
+
+        @socket.write(data)
+      end
+    end
+
+    # Closes the any open sockets
+    # @return [Boolean] true, always
+    def close
+      # Close the underlying socket
+      @lock.synchronize { @socket.close }
+
+      # Kill off the read thread
+      if @read_thread && @read_thread != Thread.current
+        begin
+          @readers << nil
+          @read_thread.join
+        rescue ThreadError
+        end
+      end
+
+      true
     end
 
     private
-    # Reads the next message buffer from the socket
-    # @return [Neptune::Buffer, Fixnum]
-    def read_buffer(timeout)
-      length = @socket.read(4, timeout: timeout).unpack('N').first
-      buffer = Buffer.new(@socket.read(length, timeout: timeout))
-      correlation_id = Types::Int32.from_kafka(buffer)
-      [buffer.rewind, correlation_id]
-    end
-
     # Runs the given block, catching any socket errors and raising them as
     # a ConnectionError
     def catch_errors
       yield
-    rescue SystemCallError, IOError, OpenSSL::SSL::SSLError => ex
-      @socket.close
+    rescue SocketError, SystemCallError, IOError, OpenSSL::SSL::SSLError => ex
+      # Wake up any other threads waiting for responses
+      @buffers.raise(ex)
+      close
+
       raise ConnectionError.new("#{ex.class}: #{ex.message}", ex)
     end
   end

@@ -1,6 +1,8 @@
 require 'forwardable'
+require 'thread'
 require 'neptune/connection'
 require 'neptune/support/assertions'
+require 'neptune/support/counter'
 require 'neptune/support/pretty_print'
 require 'neptune/resource'
 
@@ -35,7 +37,8 @@ module Neptune
 
     def initialize(*) #:nodoc:
       super
-      @correlation_id = 0
+      @lock = Mutex.new
+      @correlation_id = Support::Counter.new
       @connection = Connection.new(host, port)
     end
 
@@ -70,11 +73,11 @@ module Neptune
         requests: requests
       )
 
-      write(request)
-
       if request.required_acks != 0
-        read(Api::Produce::BatchResponse, request.correlation_id)
+        write(request, Api::Produce::BatchResponse)
       else
+        write(request)
+
         Api::Produce::BatchResponse.new(responses: requests.map do |request|
           Api::Produce::Response.new(
             topic_name: request.topic_name,
@@ -95,8 +98,7 @@ module Neptune
       request = Api::Metadata::Request.new(
         topic_names: topic_names
       )
-      write(request)
-      read(Api::Metadata::Response, request.correlation_id)
+      write(request, Api::Metadata::Response)
     end
 
     # Invokes the fetch API with the given requests
@@ -111,8 +113,7 @@ module Neptune
         min_bytes: options.fetch(:min_bytes, config.min_fetch_bytes),
         requests: requests
       )
-      write(request)
-      read(Api::Fetch::BatchResponse, request.correlation_id)
+      write(request, Api::Fetch::BatchResponse)
     end
 
     # Invokes the offset API with the given requests
@@ -125,8 +126,7 @@ module Neptune
       request = Api::Offset::BatchRequest.new(
         requests: requests
       )
-      write(request)
-      read(Api::Offset::BatchResponse, request.correlation_id)
+      write(request, Api::Offset::BatchResponse)
     end
 
     # Fetch metadata for the given consumer group
@@ -139,8 +139,7 @@ module Neptune
       request = Api::ConsumerMetadata::Request.new(
         consumer_group: options.fetch(:group, config.consumer_group)
       )
-      write(request)
-      read(Api::ConsumerMetadata::Response, request.correlation_id)
+      write(request, Api::ConsumerMetadata::Response)
     end
 
     # Invokes the offset fetch API with the given requests
@@ -154,8 +153,7 @@ module Neptune
         consumer_group: options.fetch(:group, config.consumer_group),
         requests: requests
       )
-      write(request)
-      read(Api::OffsetFetch::BatchResponse, request.correlation_id)
+      write(request, Api::OffsetFetch::BatchResponse)
     end
 
     # Invokes the offset commit API with the given requests
@@ -166,42 +164,51 @@ module Neptune
       assert_valid_keys(options, :group, :group_generation_id, :consumer_id, :retention_time)
 
       request = Api::OffsetCommit::BatchRequest.new(
-        consumer_group: options.fetch(:group, cluster.config.consumer_group),
-        consumer_group_generation_id: options.fetch(:group_generation_id, cluster.config.consumer_group_generation_id),
-        consumer_id: options.fetch(:consumer_id, cluster.config.consumer_id),
-        retention_time: options.fetch(:retention_time, cluster.config.offset_retention_time),
+        consumer_group: options.fetch(:group, config.consumer_group),
+        consumer_group_generation_id: options.fetch(:group_generation_id, config.consumer_group_generation_id),
+        consumer_id: options.fetch(:consumer_id, config.consumer_id),
+        retention_time: options.fetch(:retention_time, config.offset_retention_time),
         requests: requests
       )
-      write(request)
-      read(Api::OffsetCommit::BatchResponse, request.correlation_id)
+      write(request, Api::OffsetCommit::BatchResponse)
     end
 
     # Close any open connections to the broker
     # @return [Boolean] true, always
     def close
-      connection.close
+      @lock.synchronize { @connection.close }
       true
     end
 
     private
-    def next_correlation_id #:nodoc:
-      @correlation_id += 1
-    end
-
-    # Reads a response from the connection
-    def read(response_class, correlation_id)
-      buffer = connection.read(correlation_id)
-      response_class.from_kafka(buffer, version: config.api_version(response_class.api_name))
-    end
-
     # Writes the given request to the connection
-    def write(request)
+    def write(request, response_class = nil)
       request.client_id = config.client_id
-      request.correlation_id = next_correlation_id
+      request.correlation_id = @correlation_id.increment!
       request.api_version = config.api_version(request.class.api_name)
 
-      connection.verify
+      # Write the request, ensuring that reads occur on the same connection
+      connection = valid_connection
       connection.write(request.to_kafka(version: request.api_version))
+
+      if response_class
+        # Read a response from the connection
+        buffer = connection.read(request.correlation_id)
+        response_class.from_kafka(buffer, version: config.api_version(response_class.api_name))
+      end
+    end
+
+    # Fetches the current, valid connection for this broker
+    # @return [Neptune::Connection]
+    def valid_connection
+      # Check validity without locking to optimize access time
+      @connection.valid? || @lock.synchronize do
+        unless @connection.valid?
+          @connection = Connection.new(host, port, config)
+        end
+      end
+
+      @connection
     end
 
     def pretty_print_ignore #:nodoc:
