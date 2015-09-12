@@ -10,13 +10,9 @@ module Neptune
     # @return [String]
     attr_accessor :client_id
 
-    # The number of times to retry before failing API calls
-    # @return [Fixnum]
-    attr_accessor :retry_count
-
-    # The amount of time to wait (in ms) between retries
-    # @return [Fixnum]
-    attr_accessor :retry_backoff
+    #
+    # Timeouts
+    #
 
     # The amount of time to wait (in ms) until timing out on reads
     # @return [Fixnum]
@@ -29,6 +25,28 @@ module Neptune
     # The amount of time to wait (in ms) until timing out on connect
     # @return [Fixnum]
     attr_accessor :connect_timeout
+
+    # The number of times to retry before failing API calls
+    # @return [Fixnum]
+    attr_accessor :retry_count
+
+    # The amount of time to wait (in ms) between retries
+    # @return [Fixnum]
+    attr_accessor :retry_backoff
+
+    #
+    # Batches
+    #
+
+    # Whether batches should parallelize requests when being made across multiple
+    # brokers
+    # @return [Boolean]
+    attr_accessor :parallel_batches
+
+    # Whether application code is thread-safe when processing callbacks in
+    # batches
+    # @return [Boolean]
+    attr_accessor :threadsafe
 
     #
     # SSL
@@ -55,7 +73,7 @@ module Neptune
     attr_accessor :ssl_verify
 
     #
-    # Produce-specific configurations
+    # Producer-specific configurations
     #
 
     # The topics that are configured to store compressed messages
@@ -130,19 +148,25 @@ module Neptune
     def initialize(options = {}) #:nodoc:
       options = {
         client_id: 'neptune',
-        retry_count: 3,
-        retry_backoff: 100,
-        required_acks: 0,
+
+        # Timeouts
         ack_timeout: 1_500,
         read_timeout: 10_000,
         write_timeout: 10_000,
         connect_timeout: 10_000,
+        retry_count: 3,
+        retry_backoff: 100,
 
         # SSL
         ssl: false,
         ssl_verify: true,
 
+        # Batches
+        parallel_batches: true,
+        threadsafe: true,
+
         # Producer configurations
+        required_acks: 0,
         partitioner: :hashed,
         refresh_interval: 600_000,
         compressed_topics: [],

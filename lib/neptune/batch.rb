@@ -1,5 +1,6 @@
 require 'forwardable'
 require 'set'
+require 'thread'
 require 'neptune/error_code'
 require 'neptune/support/assertions'
 require 'neptune/support/pretty_print'
@@ -37,6 +38,7 @@ module Neptune
       @requests = []
       @responses_by_request = {}
       @callbacks = {}
+      @callback_lock = Mutex.new
     end
 
     # The responses from all of the requests in this batch, including those
@@ -106,8 +108,19 @@ module Neptune
     # Process requests, grouped by broker
     def process(requests)
       by_broker = requests.group_by {|request| broker_for(request)}
-      by_broker.each do |broker, requests|
-        process_broker(broker, requests)
+
+      if by_broker.count > 1 && @cluster.config.parallel_batches
+        # Run in separate threads for parallelism
+        by_broker.map do |broker, requests|
+          Thread.new do
+            process_broker(broker, requests)
+          end
+        end.each(&:join)
+      else
+        # Run in current thread
+        by_broker.each do |broker, requests|
+          process_broker(broker, requests)
+        end
       end
     end
 
@@ -149,8 +162,16 @@ module Neptune
     def run_callbacks(request)
       callback = @callbacks[request]
       response = response_for(request)
+
       if callback && response && response.success?
-        callback.call(api::BatchResponse.new(responses: [response]))
+        threadsafe = @cluster.config.threadsafe
+
+        begin
+          @callback_lock.lock unless threadsafe
+          callback.call(api::BatchResponse.new(responses: [response]))
+        ensure
+          @callback_lock.unlock unless threadsafe
+        end
       end
     end
 
