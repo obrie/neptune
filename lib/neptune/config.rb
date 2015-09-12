@@ -1,6 +1,7 @@
 require 'zlib'
 require 'neptune/connection'
 require 'neptune/compression'
+require 'neptune/partitioner'
 
 module Neptune
   # Encapsulates configuration information for a client
@@ -142,7 +143,7 @@ module Neptune
         ssl_verify: true,
 
         # Producer configurations
-        partitioner: lambda {|key, partition_count| Zlib::crc32(key) % partition_count},
+        partitioner: :hashed,
         refresh_interval: 600_000,
         compressed_topics: [],
         compression_codec: :none,
@@ -209,6 +210,21 @@ module Neptune
         Compression.find_by_name(@compression_codec)
       else
         @compression_codec
+      end
+    end
+
+    # Builds a new instance for partitioning messages
+    # @return [Object]
+    def partitioner
+      case @partitioner
+      when nil
+        nil
+      when Symbol
+        Partitioner.find_by_name(@partitioner).new
+      when Class
+        @partitioner.new
+      else
+        @partitioner
       end
     end
   end

@@ -25,11 +25,6 @@ module Neptune
     # @return [Neptune::Cluster]
     attr_accessor :cluster
 
-    def initialize(*) #:nodoc:
-      super
-      @partition_counter = 0
-    end
-
     # The compression codec being used in this topic
     # @return [Class]
     def compression_codec
@@ -76,16 +71,11 @@ module Neptune
     # @return [Fixnum]
     def partition_for!(key)
       if leader_available?
-        if key
-          # Use the configured partitioner
-          partition_id = cluster.config.partitioner.call(key, partitions.count)
-          partition!(partition_id)
-        elsif available_partitions.any?
-          # Round-robin between partitions
-          available_partitions[next_partition_counter % available_partitions.count]
-        else
-          ErrorCode[:leader_not_available].raise
-        end
+        # Use the configured partitioner
+        partition_id = partitioner.call(key, available_partitions.count, partitions.count)
+        partition!(partition_id)
+      else
+        error_code.raise
       end
     end
 
@@ -102,10 +92,8 @@ module Neptune
     end
 
     private
-    # Counter used to round-robin between partitions
-    # @return [Fixnum]
-    def next_partition_counter
-      @partition_counter += 1
+    def partitioner #:nodoc:
+      @partitioner ||= cluster.config.partitioner
     end
 
     def pretty_print_ignore #:nodoc:
