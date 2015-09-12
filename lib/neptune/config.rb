@@ -1,5 +1,6 @@
 require 'zlib'
 require 'neptune/connection'
+require 'neptune/compression'
 
 module Neptune
   # Encapsulates configuration information for a client
@@ -196,6 +197,19 @@ module Neptune
     # @return [Fixnum]
     def api_version(api_name)
       api_versions.fetch(api_name)
+    end
+
+    # The codec class for compressing messages
+    # @return [Class]
+    def compression_codec
+      case @compression_codec
+      when nil
+        nil
+      when Symbol
+        Compression.find_by_name(@compression_codec)
+      else
+        @compression_codec
+      end
     end
   end
 end

@@ -33,7 +33,7 @@ module Neptune
     # The compression codec being used in this topic
     # @return [Class]
     def compression_codec
-      Compression.find_by_name(cluster.config.compression_codec) if compressed?
+      cluster.config.compression_codec if compressed?
     end
 
     # Whether this topic is compressed
