@@ -8,21 +8,11 @@ require 'neptune/api/produce'
 
 module Neptune
   module Api
-    NAMES = {
-      consumer_metadata: ConsumerMetadata,
-      fetch: Fetch,
-      metadata: Metadata,
-      offset: Offset,
-      offset_fetch: OffsetFetch,
-      offset_commit: OffsetCommit,
-      produce: Produce
-    }
-
     class << self
       # Look up the Api module with the given name
       # @return [Module]
       def get(name)
-        NAMES.fetch(name)
+        @names.fetch(name)
       end
 
       # Look up the Api module that the given class belongs to
@@ -34,8 +24,23 @@ module Neptune
       # Look up the Api name for the given module
       # @return [Symbol]
       def name_for(api)
-        NAMES.key(api) || raise(KeyError.new("key not found: #{api.name}"))
+        @names.key(api) || raise(KeyError.new("key not found: #{api.name}"))
+      end
+
+      # Registers an Api module with the given name
+      def register(name, api)
+        @names[name] = api
       end
     end
+
+    @names = {}
+
+    register(:consumer_metadata, ConsumerMetadata)
+    register(:fetch, Fetch)
+    register(:metadata, Metadata)
+    register(:offset, Offset)
+    register(:offset_fetch, OffsetFetch)
+    register(:offset_commit, OffsetCommit)
+    register(:produce, Produce)
   end
 end
