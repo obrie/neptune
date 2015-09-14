@@ -23,9 +23,11 @@ module Neptune
 
           # Ensure each request has a partition id
           requests.each do |request|
-            topic = @cluster.topic!(request.topic_name)
-            partition = topic.partition_for!(request.messages.first.key)
-            request.partition_id = partition.id
+            unless request.partition_id
+              topic = @cluster.topic!(request.topic_name)
+              partition = topic.partition_for!(request.messages.first.key)
+              request.partition_id = partition.id
+            end
           end
 
           # Group by partition
