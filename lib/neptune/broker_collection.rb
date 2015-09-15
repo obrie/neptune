@@ -44,6 +44,21 @@ module Neptune
       broker
     end
 
+    # Replaces the current collection of brokers with the given ones.  Any
+    # brokers that intersect will remain in the collection.
+    # @return [Neptune::BrokerCollection]
+    def replace(brokers)
+      brokers = brokers.map {|broker| self << broker}
+
+      ids_to_remove = @by_id.keys - brokers.map(&:id)
+      ids_to_remove.each do |id|
+        broker = @by_id.delete(id)
+        broker.close
+      end
+
+      brokers
+    end
+
     # Enumerates over each broker
     def each(&block)
       @by_id.values.each(&block)

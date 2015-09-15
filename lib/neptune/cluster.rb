@@ -92,7 +92,7 @@ module Neptune
       retriable(:metadata, attempts: [brokers.count, config[:retry_count]].max, backoff: 0) do |index|
         metadata = brokers[index % brokers.count].metadata(topic_names)
         metadata.topics.each {|topic| topics << topic if topic.exists?}
-        metadata.brokers.each {|broker| self.brokers << broker}
+        self.brokers.replace(metadata.brokers)
 
         @refresh_timer.reset
         true
